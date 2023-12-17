@@ -16,8 +16,15 @@ public:
     Vec2 & rotate_rad(float radians);
     Vec2 & rotate_deg(float degrees);
     Vec2 & normalize();
-    Vec2 & operator + (Vec2 & other);
-    Vec2 & operator - (Vec2 & other);
-    Vec2 & operator * (float multiplier);
+    Vec2 operator + (Vec2 & other);
+    // Vec2 operator + (Vec2 other);
+    Vec2 & operator += (Vec2 & other);
+    // Vec2 & operator += (Vec2 other);
+    Vec2 operator - (Vec2 & other);
+    // Vec2 operator - (Vec2 other);
+    Vec2 & operator -= (Vec2 & other);
+    // Vec2 & operator -= (Vec2 other);
+    Vec2 operator * (float multiplier);
+    Vec2 & operator *= (float multiplier);
     bool operator == (Vec2 & other) const;
 };

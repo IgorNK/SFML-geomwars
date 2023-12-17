@@ -41,23 +41,55 @@ Vec2 & Vec2::normalize() {
     return *this;
 };
 
-Vec2 & Vec2::operator + (Vec2 & other) {
+Vec2 Vec2::operator + (Vec2 & other) {
+    return Vec2(x + other.x, y + other.y);
+};
+
+// Vec2 Vec2::operator + (Vec2 other) {
+//     return Vec2(x + other.x, y + other.y);
+// }
+
+Vec2 & Vec2::operator += (Vec2 & other) {
     x += other.x;
     y += other.y;
     return *this;
-};
+}
 
-Vec2 & Vec2::operator - (Vec2 & other) {
+// Vec2 & Vec2::operator += (Vec2 other) {
+//     x += other.x;
+//     y += other.y;
+//     return *this;
+// }
+
+Vec2 Vec2::operator - (Vec2 & other) {
+    return Vec2(x - other.x, y - other.y);
+}
+
+// Vec2 Vec2::operator - (Vec2 other) {
+//     return Vec2(x - other.x, y - other.y);
+// }
+
+Vec2 & Vec2::operator -= (Vec2 & other) {
     x -= other.x;
     y -= other.y;
     return *this;
 }
 
-Vec2 & Vec2::operator * (float multiplier) {
+// Vec2 & Vec2::operator -= (Vec2 other) {
+//     x -= other.x;
+//     y -= other.y;
+//     return *this;
+// }
+
+Vec2 Vec2::operator * (float multiplier) {
+    return Vec2(x * multiplier, y * multiplier);
+};
+
+Vec2 & Vec2::operator *= (float multiplier) {
     x *= multiplier;
     y *= multiplier;
     return *this;
-};
+}
 
 bool Vec2::operator == (Vec2 & other) const {
     return (x == other.x && y == other.y);

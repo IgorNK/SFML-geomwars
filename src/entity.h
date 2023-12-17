@@ -7,19 +7,22 @@
 enum Tag {
     Player,
     Enemies,
-    Bullets
+    Bullets,
+    WorldBounds,
 };
 
 static std::map<std::string, Tag> tag_names {
     {"Player", Tag::Player},
     {"Enemies", Tag::Enemies},
-    {"Bullets", Tag::Bullets}
+    {"Bullets", Tag::Bullets},
+    {"WorldBounds", Tag::WorldBounds}
 };
 
 static std::map<Tag, std::string> name_tags {
     {Tag::Player, "Player"},
     {Tag::Enemies, "Enemies"},
-    {Tag::Bullets, "Bullets"}
+    {Tag::Bullets, "Bullets"},
+    {Tag::WorldBounds, "WorldBounds"}
 };
 
 class Entity {
@@ -30,6 +33,8 @@ public:
     std::shared_ptr<CTransform> transform;
     std::shared_ptr<CVelocity> velocity;
     std::shared_ptr<CName> name;
+    std::shared_ptr<CShape> shape;
+    std::shared_ptr<CRect> rect;
     
     Entity(Tag tag, size_t id) : m_tag(tag), m_id(id) {}
     
