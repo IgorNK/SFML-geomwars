@@ -1,0 +1,10 @@
+[submodule "dependencies/SFML"]
+	path = dependencies/SFML
+	url = https://github.com/SFML/SFML.git
+	branch = 2.6.x
+[submodule "dependencies/imgui"]
+	path = dependencies/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "dependencies/imgui-sfml"]
+	path = dependencies/imgui-sfml
+	url = https://github.com/SFML/imgui-sfml.git
