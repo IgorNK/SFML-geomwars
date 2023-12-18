@@ -2,6 +2,9 @@
 #include "vec2.h"
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
+
+
 
 void Game::run() {    
     
@@ -16,13 +19,17 @@ void Game::run() {
 
         sUserInput();
         if (!m_paused) {
+            sInputHandling();
+            sLifespan(deltaTime);
             sMovement(deltaTime);
             sCollision();
+            sPlayerSpawner(deltaTime);
             sEnemySpawner(deltaTime);
         }
         sGUI();
         //Rendering should be last
         sRender(deltaTime);
+        m_frameCount++;
     }
     shutdown();
 }
@@ -37,16 +44,16 @@ Game::Game(const std::string configfile) {
 
 void Game::init(const std::string configfile) {
     std::srand(std::time(nullptr));
-    m_config = Configuration::read_file(configfile);
+    m_config = read_file(configfile);
     const size_t width = std::stoi(m_config["Window"]["width"]);
     const size_t height = std::stoi(m_config["Window"]["height"]);
     const size_t framerate = std::stoi(m_config["Window"]["refreshRate"]);
-    m_spawn_interval = std::stof(m_config["Enemy"]["spawnInterval"]);
+    m_enemy_spawn_interval = std::stoi(m_config["Enemy"]["spawnInterval"]);
+    m_player_spawn_interval = std::stoi(m_config["Player"]["spawnInterval"]);
     m_window.create(sf::VideoMode(width, height), "ImGUI + SFML = <3");
     m_window.setFramerateLimit(framerate);
     ImGui::SFML::Init(m_window);
     spawn_world();
-    test_spawn();
 }
 
 void Game::shutdown() {
@@ -59,12 +66,41 @@ void Game::spawn_world() {
 }
 
 void Game::spawn_player() {
+    for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
+        const sf::FloatRect & w_bounds = wb->rect->rect;
+        const Vec2 center = Vec2(w_bounds.left + w_bounds.width / 2, w_bounds.top + w_bounds.height / 2);
+        const std::shared_ptr<Entity> player = m_entity_manager.add_entity(Tag::Player);
+        setup_player(*player.get(), center);
+    }
+}
 
+void Game::setup_player(Entity & player, const Vec2 & position) {
+    const float shapeRadius = std::stof(m_config["Player"]["shapeRadius"]);
+    const float collisionRadius = std::stof(m_config["Player"]["collisionRadius"]);
+    const float speed = std::stof(m_config["Player"]["speed"]);
+    const int fillRed = std::stoi(m_config["Player"]["fillRed"]);
+    const int fillGreen = std::stoi(m_config["Player"]["fillGreen"]);
+    const int fillBlue = std::stoi(m_config["Player"]["fillBlue"]);
+    const int outlineRed = std::stoi(m_config["Player"]["outlineRed"]);
+    const int outlineGreen = std::stoi(m_config["Player"]["outlineGreen"]);
+    const int outlineBlue = std::stoi(m_config["Player"]["outlineBlue"]);
+    const int outlineThickness = std::stoi(m_config["Player"]["outlineThickness"]);
+    const int vertices = std::stoi(m_config["Player"]["vertices"]);
+
+    player.name = std::make_shared<CName>(CName("Player"));
+    player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, 180, 10));
+    player.transform = std::make_shared<CTransform>(CTransform(position));
+    player.velocity = std::make_shared<CVelocity>(CVelocity());
+    player.weapon = std::make_shared<CWeapon>(CWeapon());
+    player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon());
+    player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
+    player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
+    player.input = std::make_shared<CInput>(CInput());
 }
 
 void Game::spawn_enemy() {
     for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
-        const sf::FloatRect w_bounds = wb->rect->rect;
+        const sf::FloatRect & w_bounds = wb->rect->rect;
         const float border = wb->rect->border;
         const sf::FloatRect spawn_bounds = sf::FloatRect(w_bounds.left + border, w_bounds.top + border, w_bounds.width - border, w_bounds.height - border);   
         const std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(Tag::Enemies);
@@ -72,7 +108,7 @@ void Game::spawn_enemy() {
     }
 }
 
-void Game::setup_random_enemy(const Entity & enemy, sf::FloatRect spawn_bounds) {    
+void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {    
     const float shapeRadius = std::stof(m_config["Enemy"]["shapeRadius"]);
     const float collisionRadius = std::stof(m_config["Enemy"]["collisionRadius"]);
     const float speedMin = std::stof(m_config["Enemy"]["speedMin"]);
@@ -94,7 +130,7 @@ void Game::setup_random_enemy(const Entity & enemy, sf::FloatRect spawn_bounds) 
     enemy.name = std::make_shared<CName>(CName("Enemy"));
     enemy.transform = std::make_shared<CTransform>(CTransform(rand_x, rand_y));
     enemy.shape = std::make_shared<CShape>(CShape(shapeRadius, rand_vertices, sf::Color(0, 0, 0), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
-    enemy.collider = std::make_shared<CCollier>(CCollier(collisionRadius));
+    enemy.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
 }
 
@@ -107,15 +143,22 @@ void Game::shoot() {
         if (player->weapon && player->transform) {
             const Vec2 position = player->transform->position.clone();
             const float rotation = player->transform->rotation;
-            const Vec2 velocity = Vec2(1, 0).rotate_rad(rotation) * player->weapon->speed;
+            const Vec2 velocity = Vec2::forward().rotate_rad(rotation).normalize() * player->weapon->speed;
+            const CShape & bullet_prefab = player->weapon->bullet;
+            const float collision_radius = bullet_prefab.shape.getRadius();
+            const float lifespan = player->weapon->lifespan;
             const std::shared_ptr<Entity> bullet = m_entity_manager.add_entity(Tag::Bullets);
             bullet->transform = std::make_shared<CTransform>(CTransform(position, rotation));
             bullet->velocity = std::make_shared<CVelocity>(CVelocity(velocity));
+            bullet->shape = std::make_shared<CShape>(CShape(bullet_prefab));
+            bullet->collider = std::make_shared<CCollider>(CCollider(collision_radius));
+            bullet->name = std::make_shared<CName>(CName("Bullet"));
+            bullet->lifespan = std::make_shared<CLifespan>(CLifespan(lifespan));
         }
     }
 }
 
-void Game::shootSecialWeapon() {
+void Game::shootSpecialWeapon() {
 
 }
 
@@ -130,12 +173,126 @@ void Game::test_spawn() {
     enemy->shape->shape.setFillColor(sf::Color(0, 255, 255));
 }
 
+void Game::sLifespan(const sf::Time deltaTime) {
+    for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
+        if (entity->lifespan) {
+            float & countdown = entity->lifespan->countdown;
+            const float duration = entity->lifespan->duration;
+            if (countdown <= 0) {
+                entity->destroy();
+            }
+            if (entity->shape) {
+                float rate = countdown / duration * 255;
+                sf::CircleShape & shape = entity->shape->shape;
+                const sf::Color color = shape.getFillColor();
+                const sf::Color outline = shape.getOutlineColor();
+                shape.setFillColor(sf::Color(color.r, color.g, color.b, rate));
+                shape.setOutlineColor(sf::Color(outline.r, outline.g, outline.b, rate));
+            }
+            --countdown;
+        }
+    }
+}
+
 void Game::sUserInput() {
     sf::Event event;
+    std::shared_ptr<Entity> player;
+    for (const std::shared_ptr<Entity> p : m_entity_manager.get_entities(Tag::Player)) {
+        if (p->input) {
+            player = std::move(p);
+        }
+    }
+
+    if (player) {
+        player->input->axis = Vec2(0, 0);
+        player->input->fire = false;
+        player->input->secondaryFire = false;
+    }
+
+    Vec2 move_axis {0, 0};
+    bool fire_input = false;
+    bool secondary_fire_input = false;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+        move_axis.y = -1;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+        move_axis.y = 1;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+        move_axis.x = -1;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+        move_axis.x = 1;
+    }
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+        fire_input = true;
+    }
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
+        secondary_fire_input = true;
+    }
+
+    if (player) {
+        player->input->axis = move_axis;
+        player->input->fire = fire_input;
+        player->input->secondaryFire = secondary_fire_input;
+    }
+
     while (m_window.pollEvent(event)) {
         ImGui::SFML::ProcessEvent(event);
         if (event.type == sf::Event::Closed) {
             m_window.close();
+            m_running = false;
+        }
+
+        if (event.type == sf::Event::MouseMoved) {
+            const sf::Vector2i mouse_pos = sf::Mouse::getPosition(m_window);
+            if (player) {
+                player->input->mousePosition = Vec2(mouse_pos.x, mouse_pos.y);
+            }
+        }
+
+
+        if (event.type == sf::Event::MouseButtonPressed) {
+            if (ImGui::GetIO().WantCaptureMouse || !player) {
+                continue;
+            }
+        }
+    }
+}
+
+void Game::sInputHandling() {
+    for (std::shared_ptr<Entity> p : m_entity_manager.get_entities(Tag::Player)) {
+        if (p->player && p->transform && p->input && p->velocity) {
+
+            const CInput & input = *(p->input);
+
+            CPlayerStats & player = *(p->player);
+            CTransform & transform = *(p->transform);
+            Vec2 & velocity = p->velocity->velocity;
+
+            const Vec2 direction = input.mousePosition - transform.position;
+            const float rotation = Vec2::forward().angle_to_rad(direction);
+
+            transform.rotation = rotation;
+            velocity.x = input.axis.x * player.speed;
+            velocity.y = input.axis.y * player.speed;
+
+            if (input.fire && player.fire_countdown <= 0) {
+                shoot();
+                player.fire_countdown = player.fire_delay;
+            }
+            if (input.secondaryFire && player.special_countdown <= 0) {
+                shootSpecialWeapon();
+                player.special_countdown = player.special_delay;
+            }
+
+            if (player.fire_countdown > 0) {
+                --player.fire_countdown;
+            }
+            if (player.special_countdown > 0) {
+                --player.special_countdown;
+            }
         }
     }
 }
@@ -185,17 +342,49 @@ void Game::sMovement(const sf::Time deltaTime) {
 }
 
 void Game::sCollision() {
+    for (std::shared_ptr<Entity> bullet : m_entity_manager.get_entities(Tag::Bullets)) {
+        if (bullet->transform && bullet->collider) {
+            // std::cout << "There are bullets:" << m_entity_manager.get_entities(Tag::Bullets).size() << "\n";
+            for (std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
+                if (enemy->transform && enemy->collider) {
+                    const float dist = bullet->transform->position.distance_to(enemy->transform->position);
+                    const float radius_sum = bullet->collider->radius + enemy->collider->radius;
+                    if (dist * dist < radius_sum * radius_sum) {
+                        bullet->destroy();
+                        enemy->destroy();
+                    }
+                }
+            }
+        }
+    }
 
 }
 
 void Game::sEnemySpawner(const sf::Time deltaTime) {
-    static float timer = m_spawn_interval;
+    if (m_enemy_spawn_interval <= 0) {
+        spawn_enemy();
+        m_enemy_spawn_interval = stoi(m_config["Enemy"]["spawnInterval"]);
+        return;
+    }
+    m_enemy_spawn_interval--;
+}
+
+void Game::sPlayerSpawner(const sf::Time deltaTime) {
+    if (m_entity_manager.get_entities(Tag::Player).size() > 0) {
+        return;
+    }
+    if (m_player_spawn_interval <= 0) {
+        spawn_player();
+        m_player_spawn_interval = stoi(m_config["Player"]["spawnInterval"]);
+        return;
+    }
+    m_player_spawn_interval--;
 }
 
 void Game::sGUI() {
     //Interface stuff
     ImGui::Begin("Geometry Wars");
-    std::vector<Vec2> vectors {};
+    static std::vector<Vec2> vectors {};
     
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("TabBar", tab_bar_flags)) {
@@ -433,4 +622,80 @@ void Game::sGUI() {
     }
     ImGui::End();
 
+}
+
+void Game::test_config(Config & config) {
+    std::for_each(config.begin(), config.end(),
+    [](std::pair<std::string, std::map<std::string, std::string>> p){
+        std::cout << "Heading: " << p.first << '\n';
+        std::for_each(p.second.begin(), p.second.end(),
+        [](std::pair<std::string, std::string> v){
+            std::cout << v.first << ": " << v.second << '\n';
+        });
+    });
+    std::cout << "====Individual tests====\n";
+    std::cout << "Window resolution and refresh rate: " << config["Window"]["width"] << "x" << config["Window"]["height"] << ", " << config["Window"]["refreshRate"] << '\n';
+}
+
+Config Game::parse_tokens(const std::vector<std::string> tokenstream) {
+    bool nextHeading = true;
+    std::string heading = "";
+    Config config;
+    for (std::string token : tokenstream) {
+        
+        std::string key, value;
+        std::string::size_type begin = token.find_first_not_of( " ,[\f\t\v" );
+
+        if (nextHeading) {
+            nextHeading = false;
+            heading = token;
+            config[heading] = {};
+            // std::cout << "Heading: " << heading << "\n";
+            continue;
+        }
+        
+        if (token.find(']') != std::string::npos) {
+            nextHeading = true;
+            // std::cout << "next heading\n";
+        }
+
+        // Skip blank lines
+        if (begin == std::string::npos) {
+            continue;
+        }        
+        
+        // Extract the key value
+        std::string::size_type end = token.find( '=', begin );
+        key = token.substr( begin, end - begin );
+
+        // (No leading or trailing whitespace allowed)
+        key.erase( key.find_last_not_of( " ,]\f\t\v" ) + 1 );
+
+        // No blank keys allowed
+        if (key.empty()) {
+            continue;
+        }
+
+        // Extract the value (no leading or trailing whitespace allowed)
+        begin = token.find_first_not_of( " ,]\f\n\r\t\v", end + 1 );
+        end   = token.find_last_not_of(  " ,]\f\n\r\t\v" ) + 1;
+
+        value = token.substr( begin, end - begin );
+
+        // std::cout << "key: " << key << ", value: " << value << '\n';
+        config[heading][key] = value;     
+    }
+    return config;
+}
+
+Config Game::read_file(const std::string filename) {
+    std::vector<std::string> tokenstream {};
+    std::string word;
+    
+    std::ifstream ifs(filename, std::ifstream::in);
+    while (ifs >> word) {
+        tokenstream.push_back(word);
+    }
+
+    return parse_tokens(tokenstream);
 }

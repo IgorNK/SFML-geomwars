@@ -39,6 +39,8 @@ public:
     std::shared_ptr<CName> name;
     std::shared_ptr<CShape> shape;
     std::shared_ptr<CRect> rect;
+    std::shared_ptr<CInput> input;
+    std::shared_ptr<CPlayerStats> player;
     
     Entity(const Tag tag, const size_t id) : m_tag(tag), m_id(id) {}
     

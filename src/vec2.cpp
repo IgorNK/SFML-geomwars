@@ -14,7 +14,9 @@ float Vec2::distance_to(const Vec2 & other) const {
 
 float Vec2::angle_to_rad(const Vec2 & other) const {
 //Angle to another Vec2 position, radian version
-    return atan2(other.y - y, other.x - x);
+    const float dot = x * other.x + y * other.y;
+    const float det = x * other.y - y * other.x;
+    return atan2(det, dot);
 };
 
 float Vec2::angle_to_deg(const Vec2 & other) const {
@@ -23,7 +25,7 @@ float Vec2::angle_to_deg(const Vec2 & other) const {
 }
 
 Vec2 & Vec2::rotate_rad(const float radians) {
-    float px = x * sin(radians) - y * cos(radians);
+    float px = x * cos(radians) - y * sin(radians);
     float py = x * sin(radians) + y * cos(radians);
     x = px;
     y = py;
@@ -41,7 +43,7 @@ Vec2 & Vec2::normalize() {
     return *this;
 };
 
-Vec2 Vec2::operator + (const Vec2 & other) {
+Vec2 Vec2::operator + (const Vec2 & other) const {
     return Vec2(x + other.x, y + other.y);
 };
 
@@ -61,7 +63,7 @@ Vec2 & Vec2::operator += (const Vec2 & other) {
 //     return *this;
 // }
 
-Vec2 Vec2::operator - (const Vec2 & other) {
+Vec2 Vec2::operator - (const Vec2 & other) const {
     return Vec2(x - other.x, y - other.y);
 }
 
@@ -81,7 +83,7 @@ Vec2 & Vec2::operator -= (const Vec2 & other) {
 //     return *this;
 // }
 
-Vec2 Vec2::operator * (const float multiplier) {
+Vec2 Vec2::operator * (const float multiplier) const {
     return Vec2(x * multiplier, y * multiplier);
 };
 

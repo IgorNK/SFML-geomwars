@@ -28,8 +28,15 @@ void EntityManager::update() {
 
     m_to_add.clear();
 
-    auto const pend = std::remove_if(m_entities.begin(), m_entities.end(), 
+    auto pend = std::remove_if(m_entities.begin(), m_entities.end(), 
         [](const std::shared_ptr<Entity> e) 
         { return !e->is_alive(); });
     m_entities.erase(pend, m_entities.end());
+
+    for (auto & collection : m_tag_entities) {
+        auto t_pend = std::remove_if(collection.second.begin(), collection.second.end(),
+            [](const std::shared_ptr<Entity> e)
+            { return !e->is_alive(); });
+        collection.second.erase(t_pend, collection.second.end());
+    }
 }
