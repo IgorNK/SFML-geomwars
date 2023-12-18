@@ -32,11 +32,15 @@ class Entity {
 public:
     std::shared_ptr<CTransform> transform;
     std::shared_ptr<CVelocity> velocity;
+    std::shared_ptr<CCollider> collider;
+    std::shared_ptr<CLifespan> lifespan;
+    std::shared_ptr<CWeapon> weapon;
+    std::shared_ptr<CSpecialWeapon> special_weapon;
     std::shared_ptr<CName> name;
     std::shared_ptr<CShape> shape;
     std::shared_ptr<CRect> rect;
     
-    Entity(Tag tag, size_t id) : m_tag(tag), m_id(id) {}
+    Entity(const Tag tag, const size_t id) : m_tag(tag), m_id(id) {}
     
     const size_t id() {
         return m_id;

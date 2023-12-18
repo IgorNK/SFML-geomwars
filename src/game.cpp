@@ -1,7 +1,10 @@
 #include "game.h"
 #include "vec2.h"
+#include <ctime>
+#include <cstdlib>
 
-void Game::run() {
+void Game::run() {    
+    
     while (m_window.isOpen()) {
         // create/cleanup entities
         m_entity_manager.update();
@@ -24,18 +27,21 @@ void Game::run() {
     shutdown();
 }
 
-void Game::setPaused(bool paused) {
+void Game::setPaused(const bool paused) {
     m_paused = paused;
 }
 
-Game::Game(std::string configfile) {
+Game::Game(const std::string configfile) {
     init(configfile);
 }
 
-void Game::init(std::string configfile) {
-    size_t width = 1920;
-    size_t height = 1080;
-    size_t framerate = 60;
+void Game::init(const std::string configfile) {
+    std::srand(std::time(nullptr));
+    m_config = Configuration::read_file(configfile);
+    const size_t width = std::stoi(m_config["Window"]["width"]);
+    const size_t height = std::stoi(m_config["Window"]["height"]);
+    const size_t framerate = std::stoi(m_config["Window"]["refreshRate"]);
+    m_spawn_interval = std::stof(m_config["Enemy"]["spawnInterval"]);
     m_window.create(sf::VideoMode(width, height), "ImGUI + SFML = <3");
     m_window.setFramerateLimit(framerate);
     ImGui::SFML::Init(m_window);
@@ -48,10 +54,8 @@ void Game::shutdown() {
 }
 
 void Game::spawn_world() {
-    std::shared_ptr<Entity> wb = m_entity_manager.add_entity(Tag::WorldBounds);
-    wb->rect = std::make_shared<CRect>(CRect());
-    wb->rect->rect.width = 1920;
-    wb->rect->rect.height = 1080;
+    const std::shared_ptr<Entity> wb = m_entity_manager.add_entity(Tag::WorldBounds);
+    wb->rect = std::make_shared<CRect>(CRect(1920, 1080));
 }
 
 void Game::spawn_player() {
@@ -59,11 +63,64 @@ void Game::spawn_player() {
 }
 
 void Game::spawn_enemy() {
+    for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
+        const sf::FloatRect w_bounds = wb->rect->rect;
+        const float border = wb->rect->border;
+        const sf::FloatRect spawn_bounds = sf::FloatRect(w_bounds.left + border, w_bounds.top + border, w_bounds.width - border, w_bounds.height - border);   
+        const std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(Tag::Enemies);
+        setup_random_enemy(*enemy.get(), spawn_bounds);
+    }
+}
+
+void Game::setup_random_enemy(const Entity & enemy, sf::FloatRect spawn_bounds) {    
+    const float shapeRadius = std::stof(m_config["Enemy"]["shapeRadius"]);
+    const float collisionRadius = std::stof(m_config["Enemy"]["collisionRadius"]);
+    const float speedMin = std::stof(m_config["Enemy"]["speedMin"]);
+    const float speedMax = std::stof(m_config["Enemy"]["speedMax"]);
+    const int outlineRed = std::stoi(m_config["Enemy"]["outlineRed"]);
+    const int outlineGreen = std::stoi(m_config["Enemy"]["outlineGreen"]);
+    const int outlineBlue = std::stoi(m_config["Enemy"]["outlineBlue"]);
+    const int outlineThickness = std::stoi(m_config["Enemy"]["outlineThickness"]);
+    const int verticesMin = std::stoi(m_config["Enemy"]["verticesMin"]);
+    const int verticesMax = std::stoi(m_config["Enemy"]["verticesMax"]);
+
+    const float rand_x = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.width + spawn_bounds.left;
+    const float rand_y = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.height + spawn_bounds.top;
+    const float rand_speed = (float)(std::rand()) / (float)(RAND_MAX) * (speedMax - speedMin) + speedMin;
+    const float rand_angle = (float)(std::rand()) / (float)(RAND_MAX) * 360;
+    const Vec2 rand_velocity = Vec2(0, 1).rotate_deg(rand_angle) * rand_speed;
+    const int rand_vertices = (float)(std::rand()) / (float)(RAND_MAX) * (verticesMax - verticesMin) + verticesMin;
+
+    enemy.name = std::make_shared<CName>(CName("Enemy"));
+    enemy.transform = std::make_shared<CTransform>(CTransform(rand_x, rand_y));
+    enemy.shape = std::make_shared<CShape>(CShape(shapeRadius, rand_vertices, sf::Color(0, 0, 0), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
+    enemy.collider = std::make_shared<CCollier>(CCollier(collisionRadius));
+    enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
+}
+
+void Game::spawnSmallEnemies() {
+
+}
+
+void Game::shoot() {
+    for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
+        if (player->weapon && player->transform) {
+            const Vec2 position = player->transform->position.clone();
+            const float rotation = player->transform->rotation;
+            const Vec2 velocity = Vec2(1, 0).rotate_rad(rotation) * player->weapon->speed;
+            const std::shared_ptr<Entity> bullet = m_entity_manager.add_entity(Tag::Bullets);
+            bullet->transform = std::make_shared<CTransform>(CTransform(position, rotation));
+            bullet->velocity = std::make_shared<CVelocity>(CVelocity(velocity));
+        }
+    }
+}
+
+void Game::shootSecialWeapon() {
 
 }
 
 void Game::test_spawn() {
-    std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(Tag::Enemies);
+    const std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(Tag::Enemies);
     enemy->name = std::make_shared<CName>(CName());
     enemy->transform = std::make_shared<CTransform>(CTransform());
     enemy->velocity = std::make_shared<CVelocity>(CVelocity());
@@ -83,13 +140,13 @@ void Game::sUserInput() {
     }
 }
 
-void Game::sRender(sf::Time deltaTime) {
+void Game::sRender(const sf::Time deltaTime) {
     m_window.clear();
     // Render stuff
     for (std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
         if (entity->shape) {
             if (entity->transform) {
-                Vec2 pos = entity->transform->position;
+                const Vec2 pos = entity->transform->position;
                 entity->shape->shape.setPosition(sf::Vector2f(pos.x, pos.y));
             }
             m_window.draw(entity->shape->shape);
@@ -99,11 +156,11 @@ void Game::sRender(sf::Time deltaTime) {
     m_window.display();
 }
 
-void Game::sMovement(sf::Time deltaTime) {
-    for (std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
+void Game::sMovement(const sf::Time deltaTime) {
+    for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
         if (wb->rect) {
             const sf::FloatRect w_bounds = wb->rect->rect;
-            for (std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
+            for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
                 if (enemy->velocity && enemy->shape) {
                     const sf::FloatRect s_bounds = enemy->shape->shape.getGlobalBounds();
                     Vec2 & vel = enemy->velocity->velocity;
@@ -128,10 +185,11 @@ void Game::sMovement(sf::Time deltaTime) {
 }
 
 void Game::sCollision() {
+
 }
 
-void Game::sEnemySpawner(sf::Time deltaTime) {
-
+void Game::sEnemySpawner(const sf::Time deltaTime) {
+    static float timer = m_spawn_interval;
 }
 
 void Game::sGUI() {

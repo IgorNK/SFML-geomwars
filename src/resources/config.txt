@@ -1,45 +1,49 @@
-Window 1920 1080 60 1
-Font resources/ShareTech-Regular.ttf 24 255 255 255
-Player 32 32 5 5 5 5 255 0 0 4 8
-Enemy 32 32 3 3 255 255 255 2 3 8 90 60
-Bullet 10 10 20 255 255 255 255 255 255 2 20 90
-
-#Window [W] [H] [R] [F]
-    #Width              W           int
-    #Height             H           int
-    #Refresh Rate       R           int
-    #Fullscreen         F           bool
-
-#Font [F] [S] [R] [G] [B]
-    #Font File          F           std::string
-    #Font Size          S           int
-    #RGB Color          (R,G,B)     int, int, int
-
-#Player [SR] [CR] [S] [FR] [FG] [FB] [OR] [OG] [OB] [OT] [V]
-    #Shape Radius       SR          int
-    #Collision Radius   CR          int
-    #Speed              S           float
-    #Fill Color         FR,FG,FB    int, int, int
-    #Outline Color      OR,OG,OB    int, int, int
-    #Outline Thickness  OT          int
-    #Shape Vertices     V           int
-
-#Enemy [SR] [CR] [SMIN] [SMAX] [OR] [OG] [OB] [OT] [VMIN] [VMAX] [L] [SI]
-    #Shape Radius       SR          int
-    #Collision Radius   CR          int
-    #Min / Max Speed    SMIN,SMAX   float, float
-    #Outline Color      OR,OG,OB    int, int, int
-    #Outline Thickness  OT          int
-    #Min/Max Vertices   VMIN,VMAX   int, int
-    #Small Lifespan     L           int
-    #Spawn Interval     SI          int
-
-#Bullet [SR] [CR] [S] [FR] [FG] [FB] [OR] [OG] [OB] [OT] [V] [L]
-    #Shape Radius       SR          int
-    #Collision Radius   CR          int
-    #Speed              S           float
-    #Fill Color         FR,FG,FB    int, int, int
-    #Outline Color      OR,OG,OB    int, int, int
-    #Outline Thickness  OT          int
-    #Shape Vertices     V           int
-    #Lifespan           L           int
+Window [width=1920, height=1080, refreshRate=60, fullscreen=1]
+Font [ 
+    path=resources/ShareTech-Regular.ttf,
+    size=24,
+    red=255,
+    green=255,
+    blue=255,
+]
+Player [
+    shapeRadius=32,
+    collisionRadius=32,
+    speed=5,
+    fillRed=5,
+    fillGreen=5,
+    fillBlue=5,
+    outlineRed=255,
+    outlineGreen=0,
+    outlineBlue=0,
+    outlineThickness=4,
+    vertices=8,
+]
+Enemy [ 
+    shapeRadius=32,
+    collisionRadius=32,
+    speedMin=3,
+    speedMax=3,
+    outlineRed=255,
+    outlineGreen=255,
+    outlineBlue=255,
+    outlineThickness=2,
+    verticesMin=3,
+    verticesMax=8,
+    lifespan=90,
+    spawnInterval=60,
+]
+Bullet [
+    shapeRadius=10,
+    collisionRadius=10,
+    speed=20,
+    fillRed=255,
+    fillGreen=255,
+    fillBlue=255,
+    outlineRed=255,
+    outlineGreen=255,
+    outlineBlue=255,
+    outlineThickness=2,
+    vertices=20,
+    lifespan=90,
+]

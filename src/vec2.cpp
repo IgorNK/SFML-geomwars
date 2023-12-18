@@ -8,21 +8,21 @@ float Vec2::length() const {
     return sqrtf(x * x + y * y);
 };
 
-float Vec2::distance_to(Vec2 & other) const {
+float Vec2::distance_to(const Vec2 & other) const {
     return sqrtf((other.x - x) * (other.x - x) + (other.y - y) * (other.y - y));
 };
 
-float Vec2::angle_to_rad(Vec2 & other) const {
+float Vec2::angle_to_rad(const Vec2 & other) const {
 //Angle to another Vec2 position, radian version
     return atan2(other.y - y, other.x - x);
 };
 
-float Vec2::angle_to_deg(Vec2 & other) const {
+float Vec2::angle_to_deg(const Vec2 & other) const {
 //Angle to another Vec2 position, degrees version
     return (*this).angle_to_rad(other) * m_rad_to_deg;
 }
 
-Vec2 & Vec2::rotate_rad(float radians) {
+Vec2 & Vec2::rotate_rad(const float radians) {
     float px = x * sin(radians) - y * cos(radians);
     float py = x * sin(radians) + y * cos(radians);
     x = px;
@@ -30,7 +30,7 @@ Vec2 & Vec2::rotate_rad(float radians) {
     return *this;
 };
 
-Vec2 & Vec2::rotate_deg(float degrees) {
+Vec2 & Vec2::rotate_deg(const float degrees) {
     return (*this).rotate_rad(degrees / m_rad_to_deg);
 }
 
@@ -41,7 +41,7 @@ Vec2 & Vec2::normalize() {
     return *this;
 };
 
-Vec2 Vec2::operator + (Vec2 & other) {
+Vec2 Vec2::operator + (const Vec2 & other) {
     return Vec2(x + other.x, y + other.y);
 };
 
@@ -49,7 +49,7 @@ Vec2 Vec2::operator + (Vec2 & other) {
 //     return Vec2(x + other.x, y + other.y);
 // }
 
-Vec2 & Vec2::operator += (Vec2 & other) {
+Vec2 & Vec2::operator += (const Vec2 & other) {
     x += other.x;
     y += other.y;
     return *this;
@@ -61,7 +61,7 @@ Vec2 & Vec2::operator += (Vec2 & other) {
 //     return *this;
 // }
 
-Vec2 Vec2::operator - (Vec2 & other) {
+Vec2 Vec2::operator - (const Vec2 & other) {
     return Vec2(x - other.x, y - other.y);
 }
 
@@ -69,7 +69,7 @@ Vec2 Vec2::operator - (Vec2 & other) {
 //     return Vec2(x - other.x, y - other.y);
 // }
 
-Vec2 & Vec2::operator -= (Vec2 & other) {
+Vec2 & Vec2::operator -= (const Vec2 & other) {
     x -= other.x;
     y -= other.y;
     return *this;
@@ -81,16 +81,16 @@ Vec2 & Vec2::operator -= (Vec2 & other) {
 //     return *this;
 // }
 
-Vec2 Vec2::operator * (float multiplier) {
+Vec2 Vec2::operator * (const float multiplier) {
     return Vec2(x * multiplier, y * multiplier);
 };
 
-Vec2 & Vec2::operator *= (float multiplier) {
+Vec2 & Vec2::operator *= (const float multiplier) {
     x *= multiplier;
     y *= multiplier;
     return *this;
 }
 
-bool Vec2::operator == (Vec2 & other) const {
+bool Vec2::operator == (const Vec2 & other) const {
     return (x == other.x && y == other.y);
 };

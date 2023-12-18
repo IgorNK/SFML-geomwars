@@ -14,7 +14,7 @@ public:
     EntityManager() {};
     ~EntityManager() {};
     const Entities & get_entities() const;
-    const Entities & get_entities(Tag tag);
-    std::shared_ptr<Entity> add_entity(Tag tag);
+    const Entities & get_entities(const Tag tag);
+    const std::shared_ptr<Entity> add_entity(const Tag tag);
     void update();
 };
