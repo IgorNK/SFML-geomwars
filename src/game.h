@@ -21,12 +21,12 @@ class Game {
     int m_enemy_spawn_interval {50};
     int m_player_spawn_interval {100};
     size_t m_frameCount {0};
-    float m_shape_rotation {25.f};
+    float m_shape_rotation {5.f};
     void test_config(Config & config) const;
     Config parse_tokens(std::vector<std::string> tokenstream) const;
     const Config read_file(std::string configfile) const;
     const bool collides(const CTransform & transform_a, const CTransform & transform_b, const CCollider & collider_a, const CCollider & collider_b) const;
-    const Vec2 bounce_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const
+    const Vec2 bounce_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
     const Vec2 limit_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
 
 public:
@@ -40,6 +40,8 @@ public:
     void setup_random_enemy(Entity & enemy, const sf::FloatRect spawn_bounds);
     void setup_player(Entity & player, const Vec2 & position);
     void test_spawn();
+
+    // Systems:
     void sEnemySpawner(const sf::Time deltaTime);
     void sPlayerSpawner(const sf::Time deltaTime);
     void sMovement(const sf::Time deltaTime);
@@ -51,11 +53,12 @@ public:
     void sInputHandling();
     void sGUI();
     void sRender(const sf::Time deltaTime);    
+
     void run();
     void setPaused(const bool paused);
     void shoot();
     void shootSpecialWeapon();
     void on_entity_hit(Entity & entity);
     void on_game_over();
-    void spawnSmallEnemies(const Vec2 position, const int amount);
+    void spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner);
 };

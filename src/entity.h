@@ -3,13 +3,8 @@
 #include <map>
 #include <memory>
 #include "component.h"
+#include "tag.h"
 
-enum Tag {
-    Player,
-    Enemies,
-    Bullets,
-    WorldBounds,
-};
 
 static std::map<std::string, Tag> tag_names {
     {"Player", Tag::Player},

@@ -11,3 +11,4 @@ set(SFML_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/SFML)
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui)
 add_subdirectory(dependencies/imgui-sfml)
 add_subdirectory(src)
+

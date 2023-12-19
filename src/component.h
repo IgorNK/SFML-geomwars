@@ -4,11 +4,13 @@
 #include <map>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Rect.hpp>
+#include "tag.h"
 
 enum ComponentType {
     Transform,
     Velocity,
     Collider,
+    Shape,
     Lifespan,
     Health,
     Weapon,
@@ -24,6 +26,7 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::Transform, "Transform"},
     {ComponentType::Velocity, "Velocity"},
     {ComponentType::Collider, "Collider"},
+    {ComponentType::Shape, "Shape"},
     {ComponentType::Lifespan, "Lifespan"},
     {ComponentType::Health, "Health"},
     {ComponentType::Weapon, "Weapon"},
@@ -39,6 +42,7 @@ static std::map<std::string, ComponentType> name_components {
     {"Transform", ComponentType::Transform},
     {"Velocity", ComponentType::Velocity},
     {"Collider", ComponentType::Collider},
+    {"Shape", ComponentType::Shape},
     {"Lifespan", ComponentType::Lifespan},
     {"Health", ComponentType::Health},
     {"Weapon", ComponentType::Weapon},
@@ -97,9 +101,9 @@ public:
     int react_duration;
     int react_countdown;
     float expansion;
-    CHealth(int in_hp = 1, int in_react_duration = 5.f, float expand_scale = 1.2f) : max_hp(in_hp), hp(in_hp), react_duration(in_react_duration), react_countdown(in_react_duration), expansion(expand_scale) {};
-    ~CHealth();
-}
+    CHealth(int in_hp = 1, int in_react_duration = 20.f, float expand_scale = 1.25f) : max_hp(in_hp), hp(in_hp), react_duration(in_react_duration), react_countdown(in_react_duration), expansion(expand_scale) {};
+    ~CHealth() {}
+};
 
 class CShape : public Component {
 public:
@@ -201,6 +205,7 @@ public:
     Tag tag;
     int amount;
     int lifespan;
-    CDeathSpawner(const int in_amount, const CShape & in_prefab, const int in_lifespan, const Tag in_tag) : amount(in_amount), prefab(in_prefab), lifespan(in_lifespan), tag(in_tag) {}
+    float speed;
+    CDeathSpawner(const int in_amount, const CShape & in_prefab, const int in_lifespan, const float in_speed, const Tag in_tag) : amount(in_amount), prefab(in_prefab), lifespan(in_lifespan), speed(in_speed), tag(in_tag) {}
     ~CDeathSpawner() {}
 };

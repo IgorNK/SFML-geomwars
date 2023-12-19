@@ -20,6 +20,7 @@ void Game::run() {
         sUserInput();
         if (!m_paused) {
             sInputHandling();
+            sPlayerInvincibility(deltaTime);
             sLifespan(deltaTime);
             sDamageReact(deltaTime);
             sMovement(deltaTime);
@@ -76,9 +77,28 @@ void Game::spawn_player() {
 }
 
 void Game::setup_player(Entity & player, const Vec2 & position) {
+// Bullet [
+//     shapeRadius=10,
+//     collisionRadius=10,
+//     speed=20,
+//     fillRed=255,
+//     fillGreen=255,
+//     fillBlue=255,
+//     outlineRed=255,
+//     outlineGreen=255,
+//     outlineBlue=255,
+//     outlineThickness=2,
+//     vertices=20,
+//     lifespan=90,
+// ]
+    
     const float shapeRadius = std::stof(m_config["Player"]["shapeRadius"]);
     const float collisionRadius = std::stof(m_config["Player"]["collisionRadius"]);
     const float speed = std::stof(m_config["Player"]["speed"]);
+    const int fireRate = std::stoi(m_config["Player"]["fireRate"]);
+    const int specialFireRate = std::stoi(m_config["Player"]["specialFireRate"]);
+    const int invincibilityDuration = std::stoi(m_config["Player"]["invincibilityDuration"]);
+    const int flickerRate = std::stoi(m_config["Player"]["flickerRate"]);
     const int fillRed = std::stoi(m_config["Player"]["fillRed"]);
     const int fillGreen = std::stoi(m_config["Player"]["fillGreen"]);
     const int fillBlue = std::stoi(m_config["Player"]["fillBlue"]);
@@ -89,11 +109,24 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     const int vertices = std::stoi(m_config["Player"]["vertices"]);
     const int health = std::stoi(m_config["Player"]["health"]);
 
+    const float bRadius = std::stof(m_config["Bullet"]["shapeRadius"]);
+    const float bCollision = std::stof(m_config["Bullet"]["collisionRadius"]);
+    const float bSpeed = std::stof(m_config["Bullet"]["speed"]) ;
+    const int bFillRed = std::stoi(m_config["Bullet"]["fillRed"]);
+    const int bFillGreen = std::stoi(m_config["Bullet"]["fillGreen"]);
+    const int bFillBlue = std::stoi(m_config["Bullet"]["fillBlue"]);
+    const int bOutlineRed = std::stoi(m_config["Bullet"]["outlineRed"]);
+    const int bOutlineGreen = std::stoi(m_config["Bullet"]["outlineGreen"]);
+    const int bOutlineBlue = std::stoi(m_config["Bullet"]["outlineBlue"]);
+    const int bOutlineThickness = std::stoi(m_config["Bullet"]["outlineThickness"]);
+    const int bVertices = std::stoi(m_config["Bullet"]["vertices"]);
+    const int bLifespan = std::stoi(m_config["Bullet"]["lifespan"]);
+
     player.name = std::make_shared<CName>(CName("Player"));
-    player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, 180, 10));
+    player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, fireRate, specialFireRate, invincibilityDuration, flickerRate));
     player.transform = std::make_shared<CTransform>(CTransform(position));
     player.velocity = std::make_shared<CVelocity>(CVelocity());
-    player.weapon = std::make_shared<CWeapon>(CWeapon());
+    player.weapon = std::make_shared<CWeapon>(CWeapon(bSpeed, bLifespan, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
     player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon());
     player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
@@ -143,7 +176,7 @@ void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {
     enemy.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
     enemy.health = std::make_shared<CHealth>(CHealth(rand_vertices));
-    enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, Tag::Enemy));
+    enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, smallSpeed, Tag::Enemies));
 }
 
 void Game::shoot() {
@@ -205,16 +238,23 @@ void Game::sLifespan(const sf::Time deltaTime) {
 
 void Game::sPlayerInvincibility(const sf::Time deltaTime) {
     for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
-        if (entity->player) {
-            CPlayerStats & p_stats = *entity->player.get();
+        if (player->player) {
+            CPlayerStats & p_stats = *player->player.get();
             const int freq = p_stats.flicker_frequency;
-            if (p_stats.invincibility_duration > 0) {
+            if (p_stats.invincibility_countdown > 0) {
                 --p_stats.invincibility_countdown;
-                if (entity->shape) {
-                    sf::CircleShape & shape = entity->shape->shape;
+                if (player->shape) {
+                    sf::CircleShape & shape = player->shape->shape;
                     const sf::Color color = shape.getFillColor();
                     const sf::Color outline = shape.getOutlineColor();
-                    const int alpha = (p_stats.invincibility_duration % freq == 0);
+                    int alpha = outline.a;
+                    if (p_stats.invincibility_countdown % freq == 0) {
+                        if (alpha > 0) {
+                            alpha = 0;
+                        } else {
+                            alpha = 255;
+                        }
+                    };
                     shape.setFillColor(sf::Color(color.r, color.g, color.b, alpha));
                     shape.setOutlineColor(sf::Color(outline.r, outline.g, outline.b, alpha));
                 }
@@ -255,16 +295,14 @@ void Game::sUserInput() {
         move_axis.x = 1;
     }
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-        if (ImGui::GetIO().WantCaptureMouse || !player) {
-                continue;
+        if (!ImGui::GetIO().WantCaptureMouse && player) {
+            fire_input = true;
         }
-        fire_input = true;
     }
     if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
-        if (ImGui::GetIO().WantCaptureMouse || !player) {
-                continue;
+        if (!ImGui::GetIO().WantCaptureMouse && player) {
+            secondary_fire_input = true;
         }
-        secondary_fire_input = true;
     }
 
     if (player) {
@@ -378,7 +416,7 @@ const Vec2 Game::bounce_movement(const CVelocity & velocity, const CRect & bound
     const sf::FloatRect & w_bounds = bounds.rect;
     const Vec2 & pos = transform.position;
     const float radius = collider.radius;
-    Vec2 new_vel = velocity->velocity;
+    Vec2 new_vel = velocity.velocity;
 
     if (pos.x - radius <= w_bounds.left || pos.x + radius >= w_bounds.left + w_bounds.width) {
         new_vel.x = -new_vel.x;
@@ -393,7 +431,7 @@ const Vec2 Game::limit_movement(const CVelocity & velocity, const CRect & bounds
     const sf::FloatRect & w_bounds = bounds.rect;
     const Vec2 & pos = transform.position;
     const float radius = collider.radius;
-    Vec2 new_vel = velocity->velocity;
+    Vec2 new_vel = velocity.velocity;
 
     if (new_vel.x < 0 && pos.x - radius <= w_bounds.left) {
         new_vel.x = 0;
@@ -404,7 +442,7 @@ const Vec2 Game::limit_movement(const CVelocity & velocity, const CRect & bounds
     if (new_vel.y < 0 && pos.y - radius <= w_bounds.top) {
         new_vel.y = 0;
     }
-    if (new_vel.y > 0 && pos.y + radius >= w_bounds.top + height) {
+    if (new_vel.y > 0 && pos.y + radius >= w_bounds.top + w_bounds.height) {
         new_vel.y = 0;
     }
     return new_vel;
@@ -431,7 +469,7 @@ void Game::sCollision() {
                 continue;
             }
             
-            for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemy)) {
+            for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
                 if (enemy->transform && enemy->collider) {
                     if (collides(*player->transform.get(), *enemy->transform.get(), *player->collider.get(), *enemy->collider.get())) {
                         on_entity_hit(*player.get());
@@ -443,11 +481,11 @@ void Game::sCollision() {
     }
 }
 
-const bool collides(const CTransform & t_a, const CTransform & t_b, const CCollider & c_a, const CCollider & c_b) const {
+const bool Game::collides(const CTransform & t_a, const CTransform & t_b, const CCollider & c_a, const CCollider & c_b) const {
     const float dist = t_a.position.distance_to(t_b.position);
     const float radius_sum = c_a.radius + c_b.radius;
     if (dist * dist < radius_sum * radius_sum) {
-        return true
+        return true;
     }
     return false;
 }
@@ -458,9 +496,9 @@ void Game::on_game_over() {
 
 void Game::on_entity_hit(Entity & entity) {
     if (entity.health) {
-        entity.health->react_countdown = enemy.health->react_duration;
+        entity.health->react_countdown = entity.health->react_duration;
         if (entity.player) {
-            entity.player.invincibility_countdown = entity.player.invincibility_time;
+            entity.player->invincibility_countdown = entity.player->invincibility_duration;
         }
         if (--entity.health->hp <= 0) {
             if (entity.spawner && entity.transform) {
@@ -473,22 +511,22 @@ void Game::on_entity_hit(Entity & entity) {
 }
 
 void Game::spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner) {
-    const float d_angle = 360 / Vec2::m_rad_to_deg / amount;
+    const float d_angle = 360 / Vec2::rad_to_deg / spawner.amount;
     const CShape & prefab = spawner.prefab;
-    const radius = prefab.shape.getRadius();
+    const float radius = prefab.shape.getRadius();
 
     for (int i = 0; i < spawner.amount; ++i) {
-        const float angle *= d_angle * i;
+        const float angle = d_angle * i;
         const Vec2 n_velocity = Vec2::forward().rotate_rad(angle).normalize();
         const Vec2 spawn_pos = position + n_velocity * radius;
         const std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(spawner.tag);
-        enemy.name = std::make_shared<CName>(CName("SmEnemy"));
-        enemy.transform = std::make_shared<CTransform>(CTransform(spawn_pos.x, spawn_pos.y));
-        enemy.shape = std::make_shared<CShape>(CShape(prefab));
-        enemy.collider = std::make_shared<CCollider>(CCollider(smallCollisionRadius));
-        enemy.velocity = std::make_shared<CVelocity>(CVelocity(n_velocity * smallSpeed));
-        enemy.health = std::make_shared<CHealth>(CHealth(1));
-        enemy.lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
+        enemy->name = std::make_shared<CName>(CName("SmEnemy"));
+        enemy->transform = std::make_shared<CTransform>(CTransform(spawn_pos.x, spawn_pos.y));
+        enemy->shape = std::make_shared<CShape>(CShape(prefab));
+        enemy->collider = std::make_shared<CCollider>(CCollider(radius));
+        enemy->velocity = std::make_shared<CVelocity>(CVelocity(n_velocity * spawner.speed));
+        enemy->health = std::make_shared<CHealth>(CHealth(1));
+        enemy->lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
     }
 }
 
@@ -501,7 +539,8 @@ void Game::sDamageReact(const sf::Time deltaTime) {
             }
             if (entity->shape) {
                 sf::CircleShape & shape = entity->shape->shape;
-                shape.scale = 1 + (health.expansion - 1) * (health.react_countdown / health.react_duration);
+                const float scale = 1.f + (health.expansion - 1.f) * ((float)health.react_countdown / (float)health.react_duration);
+                shape.setScale(scale, scale);
             }
         }
     }
@@ -548,7 +587,7 @@ void Game::sGUI() {
             static int l_idx = -1;
             static int r_idx = -1;
             ImGui::BeginChild("left", {200.f, 0.f}, true);
-            for (size_t i = 0; i < vectors.size(); ++i) {
+            for (int i = 0; i < vectors.size(); ++i) {
                 const bool is_selected = (l_idx == i);
                 char buf[32];
                 sprintf(buf, "Vector %d (%.3f, %.3f)##left", i, vectors[i].x, vectors[i].y);
@@ -561,7 +600,7 @@ void Game::sGUI() {
             ImGui::SameLine();
             
             ImGui::BeginChild("right", {200.f, 0.f}, true);
-            for (size_t i = 0; i < vectors.size(); ++i) {
+            for (int i = 0; i < vectors.size(); ++i) {
                 const bool is_selected = (r_idx == i);
                 char buf[32];
                 sprintf(buf, "Vector %d (%.3f, %.3f)##right", i, vectors[i].x, vectors[i].y);
@@ -647,7 +686,7 @@ void Game::sGUI() {
                     const bool is_selected = (entity_idx == i);
                     const std::shared_ptr<Entity> entity = entities[i];
                     const std::string tag_name = name_tags[entity->tag()];
-                    const size_t entity_id = entity->id();
+                    const int entity_id = entity->id();
                     ImGui::TableNextColumn();
                     char bufdel[32];
                     sprintf(bufdel, "D ##del%d", i);
@@ -714,6 +753,83 @@ void Game::sGUI() {
                         entity->velocity = std::make_shared<CVelocity>(CVelocity());
                     }
                 }
+                if (entity->player) {
+                    const int max_lives = entity->player->max_lives;
+                    const int lives = entity->player->lives;
+                    const float speed = entity->player->speed;
+                    const int fire_delay = entity->player->fire_delay;
+                    const int special_delay = entity->player->special_delay;
+                    const int inv_dur = entity->player->invincibility_duration;
+                    const int inv_count = entity->player->invincibility_countdown;
+                    const int fire_count = entity->player->fire_countdown;
+                    const int special_count = entity->player->special_countdown;
+                    const int flicker_freq = entity->player->flicker_frequency;
+                    char buf[32];
+                    sprintf(buf, "Player: L:%d/%d, F:%d/%d, SF:%d/%d, I:%d/%d, Fl:%d##comp_player", 
+                        lives, max_lives, fire_count, fire_delay, special_count, special_delay, inv_count, inv_dur, flicker_freq);
+                    if (ImGui::Selectable(buf, comp_idx == ComponentType::PlayerStats)) {
+                        comp_idx = ComponentType::PlayerStats;
+                    }
+                } else {
+                    if (ImGui::Button("+PlayerStats##add_player")) {
+                        entity->player = std::make_shared<CPlayerStats>(CPlayerStats());
+                    }
+                }
+                if (entity->collider) {
+                    const float radius = entity->collider->radius;
+                    char buf[32];
+                    sprintf(buf, "Col Radius: %.3f##comp_collider", radius);
+                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Collider)) {
+                        comp_idx = ComponentType::Collider;
+                    }
+                } else {
+                    if (ImGui::Button("+Collider##add_collider")) {
+                        entity->collider = std::make_shared<CCollider>(CCollider());
+                    }
+                }
+                if (entity->lifespan) {
+                    const int countdown = entity->lifespan->countdown;
+                    const int duration = entity->lifespan->duration;
+                    char buf[32];
+                    sprintf(buf, "Lifespan: %d/%d##comp_collider", countdown, duration);
+                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Lifespan)) {
+                        comp_idx = ComponentType::Lifespan;
+                    }
+                } else {
+                    if (ImGui::Button("+Lifespan##add_lifespan")) {
+                        entity->lifespan = std::make_shared<CLifespan>(CLifespan());
+                    }
+                }
+                if (entity->health) {
+                    const int hp = entity->health->hp;
+                    const int max_hp = entity->health->max_hp;
+                    const float expansion = entity->health->expansion;
+                    const int duration = entity->health->react_duration;
+                    const int countdown = entity->health->react_countdown;
+                    char buf[32];
+                    sprintf(buf, "HP: %d/%d, Ex%.3f D%d/%d##comp_collider", hp, max_hp, expansion, duration, countdown);
+                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Health)) {
+                        comp_idx = ComponentType::Health;
+                    }
+                } else {
+                    if (ImGui::Button("+Health##add_health")) {
+                        entity->health = std::make_shared<CHealth>(CHealth());
+                    }
+                }
+                if (entity->shape) {
+                    const sf::CircleShape & shape = entity->shape->shape;
+                    const float radius = shape.getRadius();
+                    const float scale = shape.getScale().x;
+                    char buf[32];
+                    sprintf(buf, "Shape R:%.3f S:%.3f##comp_shape", radius, scale);
+                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Shape)) {
+                        comp_idx = ComponentType::Shape;
+                    }
+                } else {
+                    if (ImGui::Button("+Shape##add_shape")) {
+                        entity->shape = std::make_shared<CShape>(CShape());
+                    }
+                }
             }
             ImGui::EndChild();
             
@@ -771,7 +887,7 @@ void Game::sGUI() {
 
 }
 
-void Game::test_config(Config & config) {
+void Game::test_config(Config & config) const {
     std::for_each(config.begin(), config.end(),
     [](std::pair<std::string, std::map<std::string, std::string>> p){
         std::cout << "Heading: " << p.first << '\n';
@@ -784,7 +900,7 @@ void Game::test_config(Config & config) {
     std::cout << "Window resolution and refresh rate: " << config["Window"]["width"] << "x" << config["Window"]["height"] << ", " << config["Window"]["refreshRate"] << '\n';
 }
 
-Config Game::parse_tokens(const std::vector<std::string> tokenstream) {
+Config Game::parse_tokens(const std::vector<std::string> tokenstream) const {
     bool nextHeading = true;
     std::string heading = "";
     Config config;
@@ -835,7 +951,7 @@ Config Game::parse_tokens(const std::vector<std::string> tokenstream) {
     return config;
 }
 
-Config Game::read_file(const std::string filename) {
+const Config Game::read_file(const std::string filename) const {
     std::vector<std::string> tokenstream {};
     std::string word;
     
