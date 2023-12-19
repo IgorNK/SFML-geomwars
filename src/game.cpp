@@ -21,6 +21,7 @@ void Game::run() {
         if (!m_paused) {
             sInputHandling();
             sLifespan(deltaTime);
+            sDamageReact(deltaTime);
             sMovement(deltaTime);
             sCollision();
             sPlayerSpawner(deltaTime);
@@ -86,6 +87,7 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     const int outlineBlue = std::stoi(m_config["Player"]["outlineBlue"]);
     const int outlineThickness = std::stoi(m_config["Player"]["outlineThickness"]);
     const int vertices = std::stoi(m_config["Player"]["vertices"]);
+    const int health = std::stoi(m_config["Player"]["health"]);
 
     player.name = std::make_shared<CName>(CName("Player"));
     player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, 180, 10));
@@ -96,6 +98,7 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     player.input = std::make_shared<CInput>(CInput());
+    player.health = std::make_shared<CHealth>(CHealth(health));
 }
 
 void Game::spawn_enemy() {
@@ -127,15 +130,20 @@ void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {
     const Vec2 rand_velocity = Vec2(0, 1).rotate_deg(rand_angle) * rand_speed;
     const int rand_vertices = (float)(std::rand()) / (float)(RAND_MAX) * (verticesMax - verticesMin) + verticesMin;
 
+    const float smallRadius = std::stof(m_config["Enemy"]["smallRadius"]);
+    const float smallCollisionRadius = std::stof(m_config["Enemy"]["smallCollisionRadius"]);
+    const float smallSpeed = std::stof(m_config["Enemy"]["smallSpeed"]);
+    const int lifespan = std::stoi(m_config["Enemy"]["lifespan"]);
+
+    const CShape small_prefab = CShape(smallRadius, rand_vertices, sf::Color(0, 0, 0),  sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness);
+
     enemy.name = std::make_shared<CName>(CName("Enemy"));
     enemy.transform = std::make_shared<CTransform>(CTransform(rand_x, rand_y));
     enemy.shape = std::make_shared<CShape>(CShape(shapeRadius, rand_vertices, sf::Color(0, 0, 0), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     enemy.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
-}
-
-void Game::spawnSmallEnemies() {
-
+    enemy.health = std::make_shared<CHealth>(CHealth(rand_vertices));
+    enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, Tag::Enemy));
 }
 
 void Game::shoot() {
@@ -154,6 +162,7 @@ void Game::shoot() {
             bullet->collider = std::make_shared<CCollider>(CCollider(collision_radius));
             bullet->name = std::make_shared<CName>(CName("Bullet"));
             bullet->lifespan = std::make_shared<CLifespan>(CLifespan(lifespan));
+            bullet->health = std::make_shared<CHealth>(CHealth());
         }
     }
 }
@@ -194,6 +203,26 @@ void Game::sLifespan(const sf::Time deltaTime) {
     }
 }
 
+void Game::sPlayerInvincibility(const sf::Time deltaTime) {
+    for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
+        if (entity->player) {
+            CPlayerStats & p_stats = *entity->player.get();
+            const int freq = p_stats.flicker_frequency;
+            if (p_stats.invincibility_duration > 0) {
+                --p_stats.invincibility_countdown;
+                if (entity->shape) {
+                    sf::CircleShape & shape = entity->shape->shape;
+                    const sf::Color color = shape.getFillColor();
+                    const sf::Color outline = shape.getOutlineColor();
+                    const int alpha = (p_stats.invincibility_duration % freq == 0);
+                    shape.setFillColor(sf::Color(color.r, color.g, color.b, alpha));
+                    shape.setOutlineColor(sf::Color(outline.r, outline.g, outline.b, alpha));
+                }
+            }
+        }
+    }
+}
+
 void Game::sUserInput() {
     sf::Event event;
     std::shared_ptr<Entity> player;
@@ -226,9 +255,15 @@ void Game::sUserInput() {
         move_axis.x = 1;
     }
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+        if (ImGui::GetIO().WantCaptureMouse || !player) {
+                continue;
+        }
         fire_input = true;
     }
     if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
+        if (ImGui::GetIO().WantCaptureMouse || !player) {
+                continue;
+        }
         secondary_fire_input = true;
     }
 
@@ -252,11 +287,8 @@ void Game::sUserInput() {
             }
         }
 
-
         if (event.type == sf::Event::MouseButtonPressed) {
-            if (ImGui::GetIO().WantCaptureMouse || !player) {
-                continue;
-            }
+            
         }
     }
 }
@@ -265,10 +297,10 @@ void Game::sInputHandling() {
     for (std::shared_ptr<Entity> p : m_entity_manager.get_entities(Tag::Player)) {
         if (p->player && p->transform && p->input && p->velocity) {
 
-            const CInput & input = *(p->input);
+            const CInput & input = *p->input.get();
 
-            CPlayerStats & player = *(p->player);
-            CTransform & transform = *(p->transform);
+            CPlayerStats & player = *p->player.get();
+            CTransform & transform = *p->transform.get();
             Vec2 & velocity = p->velocity->velocity;
 
             const Vec2 direction = input.mousePosition - transform.position;
@@ -300,13 +332,15 @@ void Game::sInputHandling() {
 void Game::sRender(const sf::Time deltaTime) {
     m_window.clear();
     // Render stuff
-    for (std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
+    for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
         if (entity->shape) {
+            sf::CircleShape & shape = entity->shape->shape;
             if (entity->transform) {
-                const Vec2 pos = entity->transform->position;
-                entity->shape->shape.setPosition(sf::Vector2f(pos.x, pos.y));
+                const Vec2 pos = entity->transform->position;                
+                shape.setPosition(sf::Vector2f(pos.x, pos.y));
+                shape.rotate(m_shape_rotation);
             }
-            m_window.draw(entity->shape->shape);
+            m_window.draw(shape);
         }
     }
     ImGui::SFML::Render(m_window);
@@ -316,48 +350,161 @@ void Game::sRender(const sf::Time deltaTime) {
 void Game::sMovement(const sf::Time deltaTime) {
     for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
         if (wb->rect) {
-            const sf::FloatRect w_bounds = wb->rect->rect;
             for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
-                if (enemy->velocity && enemy->shape) {
-                    const sf::FloatRect s_bounds = enemy->shape->shape.getGlobalBounds();
-                    Vec2 & vel = enemy->velocity->velocity;
-                    if (s_bounds.left <= w_bounds.left || s_bounds.left + s_bounds.width >= w_bounds.left + w_bounds.width) {
-                        vel.x = -vel.x;
-                    }
-                    if (s_bounds.top <= w_bounds.top || s_bounds.top + s_bounds.height >= w_bounds.top + w_bounds.height) {
-                        vel.y = -vel.y;
-                    }
+                if (enemy->transform && enemy->collider && enemy->velocity) {
+                    enemy->velocity->velocity = bounce_movement(*enemy->velocity.get(), *wb->rect.get(), *enemy->transform.get(), *enemy->collider.get());
                 }
             }
         }
     }
     
-    for (std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
+    for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
         if (entity->transform && entity->velocity) {
             Vec2 & pos = entity->transform->position;
             Vec2 & vel = entity->velocity->velocity;
+            
+            if (entity->player && entity->collider) {
+                for (const std::shared_ptr<Entity> wb : m_entity_manager.get_entities(Tag::WorldBounds)) {
+                    vel = limit_movement(*entity->velocity.get(), *wb->rect.get(), *entity->transform.get(), *entity->collider.get());
+                }
+            }
+            
             pos += vel;
         }
     }
 }
 
+const Vec2 Game::bounce_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const {
+    const sf::FloatRect & w_bounds = bounds.rect;
+    const Vec2 & pos = transform.position;
+    const float radius = collider.radius;
+    Vec2 new_vel = velocity->velocity;
+
+    if (pos.x - radius <= w_bounds.left || pos.x + radius >= w_bounds.left + w_bounds.width) {
+        new_vel.x = -new_vel.x;
+    }
+    if (pos.y - radius <= w_bounds.top || pos.y + radius >= w_bounds.top + w_bounds.height) {
+        new_vel.y = -new_vel.y;
+    }
+    return new_vel;
+}
+
+const Vec2 Game::limit_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const {
+    const sf::FloatRect & w_bounds = bounds.rect;
+    const Vec2 & pos = transform.position;
+    const float radius = collider.radius;
+    Vec2 new_vel = velocity->velocity;
+
+    if (new_vel.x < 0 && pos.x - radius <= w_bounds.left) {
+        new_vel.x = 0;
+    }
+    if (new_vel.x > 0 && pos.x + radius >= w_bounds.left + w_bounds.width) {
+        new_vel.x = 0;
+    }
+    if (new_vel.y < 0 && pos.y - radius <= w_bounds.top) {
+        new_vel.y = 0;
+    }
+    if (new_vel.y > 0 && pos.y + radius >= w_bounds.top + height) {
+        new_vel.y = 0;
+    }
+    return new_vel;
+}
+
 void Game::sCollision() {
-    for (std::shared_ptr<Entity> bullet : m_entity_manager.get_entities(Tag::Bullets)) {
+    for (const std::shared_ptr<Entity> bullet : m_entity_manager.get_entities(Tag::Bullets)) {
         if (bullet->transform && bullet->collider) {
             // std::cout << "There are bullets:" << m_entity_manager.get_entities(Tag::Bullets).size() << "\n";
-            for (std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
+            for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
                 if (enemy->transform && enemy->collider) {
-                    const float dist = bullet->transform->position.distance_to(enemy->transform->position);
-                    const float radius_sum = bullet->collider->radius + enemy->collider->radius;
-                    if (dist * dist < radius_sum * radius_sum) {
-                        bullet->destroy();
-                        enemy->destroy();
+                    if (collides(*bullet->transform.get(), *enemy->transform.get(), *bullet->collider.get(), *enemy->collider.get())) {
+                        on_entity_hit(*bullet.get());
+                        on_entity_hit(*enemy.get());
                     }
                 }
             }
         }
     }
 
+    for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
+        if (player->player && player->transform && player->collider) {
+            if (player->player->invincibility_countdown > 0) {
+                continue;
+            }
+            
+            for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemy)) {
+                if (enemy->transform && enemy->collider) {
+                    if (collides(*player->transform.get(), *enemy->transform.get(), *player->collider.get(), *enemy->collider.get())) {
+                        on_entity_hit(*player.get());
+                        on_entity_hit(*enemy.get());
+                    }
+                }
+            }
+        }
+    }
+}
+
+const bool collides(const CTransform & t_a, const CTransform & t_b, const CCollider & c_a, const CCollider & c_b) const {
+    const float dist = t_a.position.distance_to(t_b.position);
+    const float radius_sum = c_a.radius + c_b.radius;
+    if (dist * dist < radius_sum * radius_sum) {
+        return true
+    }
+    return false;
+}
+
+void Game::on_game_over() {
+
+}
+
+void Game::on_entity_hit(Entity & entity) {
+    if (entity.health) {
+        entity.health->react_countdown = enemy.health->react_duration;
+        if (entity.player) {
+            entity.player.invincibility_countdown = entity.player.invincibility_time;
+        }
+        if (--entity.health->hp <= 0) {
+            if (entity.spawner && entity.transform) {
+                spawnSmallEnemies(entity.transform->position, *entity.spawner.get());
+            }
+            
+            entity.destroy();
+        }        
+    }
+}
+
+void Game::spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner) {
+    const float d_angle = 360 / Vec2::m_rad_to_deg / amount;
+    const CShape & prefab = spawner.prefab;
+    const radius = prefab.shape.getRadius();
+
+    for (int i = 0; i < spawner.amount; ++i) {
+        const float angle *= d_angle * i;
+        const Vec2 n_velocity = Vec2::forward().rotate_rad(angle).normalize();
+        const Vec2 spawn_pos = position + n_velocity * radius;
+        const std::shared_ptr<Entity> enemy = m_entity_manager.add_entity(spawner.tag);
+        enemy.name = std::make_shared<CName>(CName("SmEnemy"));
+        enemy.transform = std::make_shared<CTransform>(CTransform(spawn_pos.x, spawn_pos.y));
+        enemy.shape = std::make_shared<CShape>(CShape(prefab));
+        enemy.collider = std::make_shared<CCollider>(CCollider(smallCollisionRadius));
+        enemy.velocity = std::make_shared<CVelocity>(CVelocity(n_velocity * smallSpeed));
+        enemy.health = std::make_shared<CHealth>(CHealth(1));
+        enemy.lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
+    }
+}
+
+void Game::sDamageReact(const sf::Time deltaTime) {
+    for (std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
+        if (entity->health) {
+            CHealth & health = *entity->health.get();
+            if (health.react_countdown > 0) {
+                --health.react_countdown;
+            }
+            if (entity->shape) {
+                sf::CircleShape & shape = entity->shape->shape;
+                shape.scale = 1 + (health.expansion - 1) * (health.react_countdown / health.react_duration);
+            }
+        }
+    }
 }
 
 void Game::sEnemySpawner(const sf::Time deltaTime) {

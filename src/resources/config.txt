@@ -19,12 +19,16 @@ Player [
     outlineThickness=4,
     vertices=8,
     spawnInterval=100,
+    health=2
 ]
 Enemy [ 
     shapeRadius=32,
+    smallRadius=16,
     collisionRadius=32,
+    smallCollisionRadius=16,
     speedMin=3,
     speedMax=3,
+    smallSpeed=1,
     outlineRed=255,
     outlineGreen=255,
     outlineBlue=255,

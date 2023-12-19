@@ -34,6 +34,7 @@ public:
     std::shared_ptr<CVelocity> velocity;
     std::shared_ptr<CCollider> collider;
     std::shared_ptr<CLifespan> lifespan;
+    std::shared_ptr<CHealth> health;
     std::shared_ptr<CWeapon> weapon;
     std::shared_ptr<CSpecialWeapon> special_weapon;
     std::shared_ptr<CName> name;
@@ -41,6 +42,7 @@ public:
     std::shared_ptr<CRect> rect;
     std::shared_ptr<CInput> input;
     std::shared_ptr<CPlayerStats> player;
+    std::shared_ptr<CDeathSpawner> spawner;
     
     Entity(const Tag tag, const size_t id) : m_tag(tag), m_id(id) {}
     

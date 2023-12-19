@@ -10,12 +10,14 @@ enum ComponentType {
     Velocity,
     Collider,
     Lifespan,
+    Health,
     Weapon,
     SpecialWeapon,
     Name,
     Rect,
     Input,
-    PlayerStats
+    PlayerStats,
+    DeathSpawner,
 };
 
 static std::map<ComponentType, std::string> component_names {
@@ -23,12 +25,14 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::Velocity, "Velocity"},
     {ComponentType::Collider, "Collider"},
     {ComponentType::Lifespan, "Lifespan"},
+    {ComponentType::Health, "Health"},
     {ComponentType::Weapon, "Weapon"},
     {ComponentType::SpecialWeapon, "SpecialWeapon"},
     {ComponentType::Name, "Name"},
     {ComponentType::Rect, "Rect"},
     {ComponentType::Input, "Input"},
-    {ComponentType::PlayerStats, "PlayerStats"}
+    {ComponentType::PlayerStats, "PlayerStats"},
+    {ComponentType::DeathSpawner, "DeathSpawner"}
 };
 
 static std::map<std::string, ComponentType> name_components {
@@ -36,12 +40,14 @@ static std::map<std::string, ComponentType> name_components {
     {"Velocity", ComponentType::Velocity},
     {"Collider", ComponentType::Collider},
     {"Lifespan", ComponentType::Lifespan},
+    {"Health", ComponentType::Health},
     {"Weapon", ComponentType::Weapon},
     {"SpecialWeapon", ComponentType::SpecialWeapon},
     {"Name", ComponentType::Name},
     {"Rect", ComponentType::Rect},
     {"Input", ComponentType::Input},
-    {"PlayerStats", ComponentType::PlayerStats}
+    {"PlayerStats", ComponentType::PlayerStats},
+    {"DeathSpawner", ComponentType::DeathSpawner}
 };
 
 class Component {
@@ -83,6 +89,17 @@ public:
     CLifespan(const float span) : countdown(span), duration(span) { }
     ~CLifespan() {}
 };
+
+class CHealth : public Component {
+public:
+    int max_hp;
+    int hp;
+    int react_duration;
+    int react_countdown;
+    float expansion;
+    CHealth(int in_hp = 1, int in_react_duration = 5.f, float expand_scale = 1.2f) : max_hp(in_hp), hp(in_hp), react_duration(in_react_duration), react_countdown(in_react_duration), expansion(expand_scale) {};
+    ~CHealth();
+}
 
 class CShape : public Component {
 public:
@@ -146,13 +163,44 @@ public:
 
 class CPlayerStats : public Component {
 public:
+    int max_lives;
     int lives;
-    float speed;
-    int special_delay;
+    float speed;    
     int fire_delay;
+    int special_delay;
+    int invincibility_duration;
     int fire_countdown;
-    int special_countdown;
-    CPlayerStats(const int in_lives = 3, const float in_speed = 10.f, const int in_special_delay = 180, const int in_fire_delay = 10, const int in_fire_countdown = 0, const int in_special_countdown = 0)
-    : lives(in_lives), speed(in_speed), special_delay(in_special_delay), fire_delay(in_fire_delay), fire_countdown(in_fire_countdown), special_countdown(in_special_countdown) {};
-    ~CPlayerStats() {};
+    int special_countdown;    
+    int invincibility_countdown;
+    int flicker_frequency;
+    CPlayerStats(
+        const int in_lives = 3
+        , const float in_speed = 10.f
+        , const int in_fire_delay = 10
+        , const int in_special_delay = 180
+        , const int in_invincibility_duration = 100
+        , const int in_flicker_frequency = 3
+    )
+        : max_lives(in_lives)
+        , lives(in_lives)
+        , speed(in_speed)
+        , fire_delay(in_fire_delay)
+        , special_delay(in_special_delay)
+        , invincibility_duration(in_invincibility_duration)
+        , fire_countdown(0)
+        , special_countdown(0) 
+        , invincibility_countdown(in_invincibility_duration)
+        , flicker_frequency(in_flicker_frequency)
+    {}
+    ~CPlayerStats() {}
+};
+
+class CDeathSpawner : public Component {
+public:
+    CShape prefab;
+    Tag tag;
+    int amount;
+    int lifespan;
+    CDeathSpawner(const int in_amount, const CShape & in_prefab, const int in_lifespan, const Tag in_tag) : amount(in_amount), prefab(in_prefab), lifespan(in_lifespan), tag(in_tag) {}
+    ~CDeathSpawner() {}
 };

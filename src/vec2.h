@@ -2,8 +2,9 @@
 #include <cmath>
 
 class Vec2 {
-    static constexpr float m_rad_to_deg = 180.f / M_PI;
+    
 public:
+    static constexpr float rad_to_deg = 180.f / M_PI;
     static Vec2 forward() {
         return Vec2(1, 0);
     };

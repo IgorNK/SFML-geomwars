@@ -21,7 +21,7 @@ float Vec2::angle_to_rad(const Vec2 & other) const {
 
 float Vec2::angle_to_deg(const Vec2 & other) const {
 //Angle to another Vec2 position, degrees version
-    return (*this).angle_to_rad(other) * m_rad_to_deg;
+    return (*this).angle_to_rad(other) * rad_to_deg;
 }
 
 Vec2 & Vec2::rotate_rad(const float radians) {
@@ -33,7 +33,7 @@ Vec2 & Vec2::rotate_rad(const float radians) {
 };
 
 Vec2 & Vec2::rotate_deg(const float degrees) {
-    return (*this).rotate_rad(degrees / m_rad_to_deg);
+    return (*this).rotate_rad(degrees / rad_to_deg);
 }
 
 Vec2 & Vec2::normalize() {
