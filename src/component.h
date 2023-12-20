@@ -64,34 +64,51 @@ public:
     float rotation {0.f};
     float scale {1.f};
     CTransform() {}
-    CTransform(const float pos_x, const float pos_y, const float in_rotation = 0.f, const float in_scale = 1.f) : position(Vec2(pos_x, pos_y)), rotation(in_rotation), scale(in_scale) { }
-    CTransform(const Vec2 in_position, const float in_rotation = 0.f, const float in_scale = 1.f) : position(in_position), rotation(in_rotation), scale(in_scale) { }
-    ~CTransform() {}
+    CTransform(
+        const float pos_x
+        , const float pos_y
+        , const float in_rotation = 0.f
+        , const float in_scale = 1.f
+    ) 
+        : position(Vec2(pos_x, pos_y))
+        , rotation(in_rotation)
+        , scale(in_scale) 
+    { }
+    CTransform(
+        const Vec2 in_position
+        , const float in_rotation = 0.f
+        , const float in_scale = 1.f
+    ) 
+        : position(in_position)
+        , rotation(in_rotation)
+        , scale(in_scale) 
+    { }
+    ~CTransform() { }
 };
 
 class CVelocity : public Component {
 public:
     Vec2 velocity {0.f, 0.f};
-    CVelocity() {}
+    CVelocity() { }
     CVelocity(const Vec2 vel) : velocity(vel) { }
-    ~CVelocity() {}
+    ~CVelocity() { }
 };
 
 class CCollider : public Component {
 public:
     float radius {30.f};
-    CCollider() {}
+    CCollider() { }
     CCollider(const float in_radius) : radius(in_radius) { }
-    ~CCollider() {}
+    ~CCollider() { }
 };
 
 class CLifespan : public Component {
 public:
     float duration {10.f};
     float countdown {10.f};
-    CLifespan() {}
+    CLifespan() { }
     CLifespan(const float span) : countdown(span), duration(span) { }
-    ~CLifespan() {}
+    ~CLifespan() { }
 };
 
 class CHealth : public Component {
@@ -101,21 +118,38 @@ public:
     int react_duration;
     int react_countdown;
     float expansion;
-    CHealth(int in_hp = 1, int in_react_duration = 20.f, float expand_scale = 1.25f) : max_hp(in_hp), hp(in_hp), react_duration(in_react_duration), react_countdown(in_react_duration), expansion(expand_scale) {};
-    ~CHealth() {}
+    CHealth(
+        int in_hp = 1
+        , int in_react_duration = 20.f
+        , float expand_scale = 1.25f
+    ) 
+        : max_hp(in_hp)
+        , hp(in_hp)
+        , react_duration(in_react_duration)
+        , react_countdown(in_react_duration)
+        , expansion(expand_scale) 
+    {};
+    ~CHealth() { }
 };
 
 class CShape : public Component {
 public:
     sf::CircleShape shape;
-    CShape(const float radius = 30.f, const size_t point_count = 8, const sf::Color fill_color = sf::Color(0, 255, 0), const sf::Color outline_color = sf::Color(255, 255, 255), const float outline_thickness = 1.f)
-    : shape(sf::CircleShape(radius, point_count)) {
+    CShape(
+        const float radius = 30.f
+        , const size_t point_count = 8
+        , const sf::Color fill_color = sf::Color(0, 255, 0)
+        , const sf::Color outline_color = sf::Color(255, 255, 255)
+        , const float outline_thickness = 1.f
+    )
+        : shape(sf::CircleShape(radius, point_count)) 
+    {
         shape.setFillColor(fill_color);
         shape.setOutlineColor(outline_color);
         shape.setOutlineThickness(outline_thickness);
         shape.setOrigin(radius, radius);
     }
-    ~CShape() {}
+    ~CShape() { }
 };
 
 class CWeapon: public Component {
@@ -123,24 +157,51 @@ public:
     float speed;
     float lifespan;
     CShape bullet;
-    CWeapon(const float bullet_speed = 10.f, const float in_lifespan = 50.f, const CShape bullet_prototype = CShape(5.f, 12, sf::Color(255, 0, 0), sf::Color(0, 0, 0), 0.f)) : speed(bullet_speed), lifespan(in_lifespan), bullet(bullet_prototype) { }
-    ~CWeapon() {}
+    CWeapon(
+        const float bullet_speed = 10.f
+        , const float in_lifespan = 50.f
+        , const CShape bullet_prototype = CShape(5.f, 12
+        , const sf::Color(255, 0, 0)
+        , const sf::Color(0, 0, 0), 0.f)
+    ) 
+        : speed(bullet_speed)
+        , lifespan(in_lifespan)
+        , bullet(bullet_prototype) 
+    { }
+    ~CWeapon() { }
 };
 
 class CSpecialWeapon: public Component {
 public:
     float speed;
+    float lifespan;
+    int recursion;
+    int amount;
     CShape bullet;
-    CSpecialWeapon(const float bullet_speed = 10.f, const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)) : speed(bullet_speed), bullet(bullet_prototype) { }
-    ~CSpecialWeapon() {}
+    CSpecialWeapon(
+        const float bullet_speed = 10.f
+        , const float in_lifespan = 50.f
+        , const int in_amount
+        , const int in_recursion
+        , const CShape bullet_prototype = CShape(5.f, 12
+        , const sf::Color(0, 0, 255)
+        , const sf::Color(0, 0, 0), 0.f)
+    ) 
+        : speed(bullet_speed)
+        , lifespan(in_lifespan)
+        , amount(in_amount)
+        , recursion(in_recursion)
+        , bullet(bullet_prototype) 
+    { }
+    ~CSpecialWeapon() { }
 };
 
 class CName : public Component {
 public:
     std::string name {"Default"};
-    CName() {}
+    CName() { }
     CName(const std::string in_name) : name(in_name) { }
-    ~CName() {}
+    ~CName() { }
 };
 
 
@@ -148,11 +209,29 @@ class CRect : public Component {
 public:
     sf::FloatRect rect {0, 0, 100.f, 100.f};
     float border {100.f};
-    CRect() {}
-    CRect(const float width, const float height, const float in_border = 100.f) : rect(sf::FloatRect(0, 0, width, height)), border(in_border) { }
-    CRect(const float left, const float top, const float width, const float height, const float in_border = 100.f) : rect(sf::FloatRect(left, top, width, height)), border(in_border) { }
-    CRect(const sf::FloatRect in_rect, const float in_border = 100.f) : rect(in_rect), border(in_border) { }
-    ~CRect() {}
+    CRect() { }
+    CRect(
+        const float width
+        , const float height
+        , const float in_border = 100.f
+    ) 
+        : rect(sf::FloatRect(0, 0, width, height))
+        , border(in_border) 
+    { }
+    CRect(
+        const float left
+        , const float top
+        , const float width
+        , const float height
+        , const float in_border = 100.f
+    ) 
+        : rect(sf::FloatRect(left, top, width, height))
+        , border(in_border) 
+    { }
+    CRect(const sf::FloatRect in_rect, const float in_border = 100.f) 
+        : rect(in_rect)
+        , border(in_border) { }
+    ~CRect() { }
 };
 
 class CInput : public Component {
@@ -161,8 +240,8 @@ public:
     Vec2 mousePosition {0, 0};
     bool fire {false};
     bool secondaryFire {false};
-    CInput() {}
-    ~CInput() {}
+    CInput() { }
+    ~CInput() { }
 };
 
 class CPlayerStats : public Component {
@@ -195,8 +274,8 @@ public:
         , special_countdown(0) 
         , invincibility_countdown(in_invincibility_duration)
         , flicker_frequency(in_flicker_frequency)
-    {}
-    ~CPlayerStats() {}
+    { }
+    ~CPlayerStats() { }
 };
 
 class CDeathSpawner : public Component {
@@ -206,6 +285,21 @@ public:
     int amount;
     int lifespan;
     float speed;
-    CDeathSpawner(const int in_amount, const CShape & in_prefab, const int in_lifespan, const float in_speed, const Tag in_tag) : amount(in_amount), prefab(in_prefab), lifespan(in_lifespan), speed(in_speed), tag(in_tag) {}
-    ~CDeathSpawner() {}
+    int recursion;
+    CDeathSpawner(
+        const int in_amount
+        , const CShape & in_prefab
+        , const int in_lifespan
+        , const float in_speed
+        , const int in_recursion
+        , const Tag in_tag
+    ) 
+        : amount(in_amount)
+        , prefab(in_prefab)
+        , lifespan(in_lifespan)
+        , speed(in_speed)
+        , recursion(in_recursion)
+        , tag(in_tag) 
+    { }
+    ~CDeathSpawner() { }
 };

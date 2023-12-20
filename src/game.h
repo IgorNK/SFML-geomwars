@@ -59,6 +59,7 @@ public:
     void shoot();
     void shootSpecialWeapon();
     void on_entity_hit(Entity & entity);
+    void on_entity_death(Entity & entity)
     void on_game_over();
-    void spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner);
+    void spawnSmallEntities(const Vec2 position, const CDeathSpawner & spawner);
 };

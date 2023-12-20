@@ -46,6 +46,8 @@ Bullet [
     shapeRadius=10,
     collisionRadius=10,
     speed=20,
+    specialRecursion=3,
+    specialAmount=6,
     fillRed=255,
     fillGreen=255,
     fillBlue=255,

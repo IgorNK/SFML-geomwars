@@ -122,12 +122,15 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     const int bVertices = std::stoi(m_config["Bullet"]["vertices"]);
     const int bLifespan = std::stoi(m_config["Bullet"]["lifespan"]);
 
+    const int bSpecialRecursion = std::stoi(m_config["Bullet"]["specialRecursion"]);
+    const int bSpecialAmount = std::stoi(m_config["Bullet"]["specialAmount"]);
+
     player.name = std::make_shared<CName>(CName("Player"));
     player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, fireRate, specialFireRate, invincibilityDuration, flickerRate));
     player.transform = std::make_shared<CTransform>(CTransform(position));
     player.velocity = std::make_shared<CVelocity>(CVelocity());
     player.weapon = std::make_shared<CWeapon>(CWeapon(bSpeed, bLifespan, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
-    player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon());
+    player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon(bSpeed, bLifespan, bSpecialAmount, bSpecialRecursion, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness));
     player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     player.input = std::make_shared<CInput>(CInput());
@@ -170,13 +173,15 @@ void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {
 
     const CShape small_prefab = CShape(smallRadius, rand_vertices, sf::Color(0, 0, 0),  sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness);
 
+    const int recursion = 0;
+
     enemy.name = std::make_shared<CName>(CName("Enemy"));
     enemy.transform = std::make_shared<CTransform>(CTransform(rand_x, rand_y));
     enemy.shape = std::make_shared<CShape>(CShape(shapeRadius, rand_vertices, sf::Color(0, 0, 0), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     enemy.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
     enemy.health = std::make_shared<CHealth>(CHealth(rand_vertices));
-    enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, smallSpeed, Tag::Enemies));
+    enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, smallSpeed, recursion, Tag::Enemies));
 }
 
 void Game::shoot() {
@@ -201,7 +206,30 @@ void Game::shoot() {
 }
 
 void Game::shootSpecialWeapon() {
+    for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
+        if (player->special_weapon && player->transform) {
+            const Vec2 position = player->transform->position.clone();
+            const float rotation = player->transform->rotation;
+            const Vec2 velocity = Vec2::forward().rotate_rad(rotation).normalize() * player->special_weapon->speed;
+            const CShape & bullet_prefab = player->special_weapon->bullet;
+            const float collision_radius = bullet_prefab.shape.getRadius();
+            const float lifespan = player->special_weapon->lifespan;
+            const std::shared_ptr<Entity> bullet = m_entity_manager.add_entity(Tag::Bullets);
 
+            const float small_speed = player->special_weapon->speed;
+            const int small_lifespan = lifespan / 4;
+            const int small_amount = player->special_weapon->amount;
+
+            bullet->transform = std::make_shared<CTransform>(CTransform(position, rotation));
+            bullet->velocity = std::make_shared<CVelocity>(CVelocity(velocity));
+            bullet->shape = std::make_shared<CShape>(CShape(bullet_prefab));
+            bullet->collider = std::make_shared<CCollider>(CCollider(collision_radius));
+            bullet->name = std::make_shared<CName>(CName("Bullet"));
+            bullet->lifespan = std::make_shared<CLifespan>(CLifespan(lifespan));
+            bullet->health = std::make_shared<CHealth>(CHealth());
+            bullet->spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(small_amount, bullet_prefab, small_lifespan, small_speed, player->special_weapon->recursion, Tag::Bullets));
+        }
+    }
 }
 
 void Game::test_spawn() {
@@ -221,7 +249,7 @@ void Game::sLifespan(const sf::Time deltaTime) {
             float & countdown = entity->lifespan->countdown;
             const float duration = entity->lifespan->duration;
             if (countdown <= 0) {
-                entity->destroy();
+                on_entity_death(*entity.get());
             }
             if (entity->shape) {
                 float rate = countdown / duration * 255;
@@ -501,16 +529,20 @@ void Game::on_entity_hit(Entity & entity) {
             entity.player->invincibility_countdown = entity.player->invincibility_duration;
         }
         if (--entity.health->hp <= 0) {
-            if (entity.spawner && entity.transform) {
-                spawnSmallEnemies(entity.transform->position, *entity.spawner.get());
-            }
-            
-            entity.destroy();
+            on_entity_death(entity);            
         }        
     }
 }
 
-void Game::spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner) {
+void Game::on_entity_death(Entity & entity) {
+    if (entity.spawner && entity.transform) {
+                spawnSmallEntities(entity.transform->position, *entity.spawner.get());
+    }
+    
+    entity.destroy();
+}
+
+void Game::spawnSmallEntities(const Vec2 position, const CDeathSpawner & spawner) {
     const float d_angle = 360 / Vec2::rad_to_deg / spawner.amount;
     const CShape & prefab = spawner.prefab;
     const float radius = prefab.shape.getRadius();
@@ -527,6 +559,9 @@ void Game::spawnSmallEnemies(const Vec2 position, const CDeathSpawner & spawner)
         enemy->velocity = std::make_shared<CVelocity>(CVelocity(n_velocity * spawner.speed));
         enemy->health = std::make_shared<CHealth>(CHealth(1));
         enemy->lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
+        if (spawner.recursion > 0) {
+            enemy->spawner = std::make_shared<CDeathSpawner>(spawner.amount, prefab, spawner.lifespan, spawner.speed, spawner.recursion - 1, spawner.tag);
+        }
     }
 }
 
@@ -832,52 +867,6 @@ void Game::sGUI() {
                 }
             }
             ImGui::EndChild();
-            
-            // ImGui::SameLine();
-
-            // ImGui::BeginChild("Component add", {200.f, 0});
-            // if (entity_idx >= 0) {
-            //     std::vector<std::string> comps;
-            //     for (auto const & v : name_components) {
-            //         comps.push_back(v.first);
-            //     }
-            //     static int add_comp_idx = 0;
-            //     const std::string comp_preview = comps[add_comp_idx];
-            //     if (ImGui::BeginCombo("##comp_select", comp_preview.c_str())) {
-            //     for (int i = 0; i < comps.size(); ++i) {
-            //             const bool is_selected = (add_comp_idx == i);
-            //             if (ImGui::Selectable(comps[i].c_str(), is_selected)) {
-            //                 add_comp_idx = i;
-            //             }
-            //             if (is_selected) {
-            //                 ImGui::SetItemDefaultFocus();
-            //             }
-            //     }
-            //     ImGui::EndCombo();
-            //     }
-            //     if (ImGui::Button("add##add_component")) {
-            //         const std::shared_ptr<Entity> entity = m_entity_manager.get_entities()[entity_idx];
-            //         const ComponentType type = name_components[comps[add_comp_idx]];
-            //         switch (type) {
-            //             case ComponentType::Transform: {
-            //                 entity->transform = std::make_shared<CTransform>(CTransform());
-            //                 break;
-            //             }
-            //             case ComponentType::Velocity: {
-            //                 entity->velocity = std::make_shared<CVelocity>(CVelocity());
-            //                 break;
-            //             }
-            //             case ComponentType::Name: {
-            //                 entity->name = std::make_shared<CName>(CName());
-            //                 break;
-            //             }
-            //             default: {}
-            //         }
-            //     }
-
-            // }
-            
-            // ImGui::EndChild();
 
             ImGui::EndTabItem();
         }
