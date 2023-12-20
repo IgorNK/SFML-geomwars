@@ -20,6 +20,9 @@ enum ComponentType {
     Input,
     PlayerStats,
     DeathSpawner,
+    PickupSpawner,
+    ScoreReward,
+    WeaponPickup
 };
 
 static std::map<ComponentType, std::string> component_names {
@@ -35,7 +38,10 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::Rect, "Rect"},
     {ComponentType::Input, "Input"},
     {ComponentType::PlayerStats, "PlayerStats"},
-    {ComponentType::DeathSpawner, "DeathSpawner"}
+    {ComponentType::DeathSpawner, "DeathSpawner"},
+    {ComponentType::PickupSpawner, "PickupSpawner"},
+    {ComponentType::ScoreReward, "ScoreReward"},
+    {ComponentType::WeaponPickup, "WeaponPickup"}
 };
 
 static std::map<std::string, ComponentType> name_components {
@@ -51,7 +57,10 @@ static std::map<std::string, ComponentType> name_components {
     {"Rect", ComponentType::Rect},
     {"Input", ComponentType::Input},
     {"PlayerStats", ComponentType::PlayerStats},
-    {"DeathSpawner", ComponentType::DeathSpawner}
+    {"DeathSpawner", ComponentType::DeathSpawner},
+    {"PickupSpawner", ComponentType::PickupSpawner},
+    {"ScoreReward", ComponentType::ScoreReward},
+    {"WeaponPickup", ComponentType::WeaponPickup}
 };
 
 class Component {
@@ -154,25 +163,35 @@ public:
 
 class CWeapon: public Component {
 public:
+    static enum FireMode {
+        ShotSingle,
+        ShotSpread
+    };
+    CWeapon::FireMode mode;
     float speed;
     float lifespan;
     CShape bullet;
     CWeapon(
         const float bullet_speed = 10.f
         , const float in_lifespan = 50.f
-        , const CShape bullet_prototype = CShape(5.f, 12
-        , const sf::Color(255, 0, 0)
-        , const sf::Color(0, 0, 0), 0.f)
+        , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(255, 0, 0), sf::Color(0, 0, 0), 0.f)
+        , const CWeapon::FireMode fire_mode = CWeapon::FireMode::ShotSingle
     ) 
         : speed(bullet_speed)
         , lifespan(in_lifespan)
-        , bullet(bullet_prototype) 
+        , bullet(bullet_prototype)
+        , mode(fire_mode) 
     { }
     ~CWeapon() { }
 };
 
 class CSpecialWeapon: public Component {
 public:
+    static enum FireMode {
+        SpecialExplosion,
+        SpecialFlamethower
+    };
+    CSpecialWeapon::FireMode mode;
     float speed;
     float lifespan;
     int recursion;
@@ -183,15 +202,15 @@ public:
         , const float in_lifespan = 50.f
         , const int in_amount
         , const int in_recursion
-        , const CShape bullet_prototype = CShape(5.f, 12
-        , const sf::Color(0, 0, 255)
-        , const sf::Color(0, 0, 0), 0.f)
+        , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)
+        , const CSpecialWeapon::FireMode fire_mode = CSpecialWeapon::FireMode::SpecialExplosion
     ) 
         : speed(bullet_speed)
         , lifespan(in_lifespan)
         , amount(in_amount)
         , recursion(in_recursion)
-        , bullet(bullet_prototype) 
+        , bullet(bullet_prototype)
+        , mode(fire_mode)
     { }
     ~CSpecialWeapon() { }
 };
@@ -302,4 +321,29 @@ public:
         , tag(in_tag) 
     { }
     ~CDeathSpawner() { }
+};
+
+class CPickupSpawner : public Component {
+public:
+    CWeaponPickup payload;
+    CPickupSpawner() {};
+    ~CPickupSpawner() {};
+};
+
+class CScoreReward : public Component {
+public:
+    CScoreReward() {};
+    ~CScoreReward() {};
+};
+
+class CWeaponPickup : public Component {
+public:
+    static enum PickupType {
+        ShotSingle,
+        ShotSpread,
+        SpecialExplosion,
+        SpecialFlamethower
+    };
+    CWeaponPickup() {};
+    ~CWeaponPickup() {};
 };

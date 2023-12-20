@@ -10,6 +10,7 @@ static std::map<std::string, Tag> tag_names {
     {"Player", Tag::Player},
     {"Enemies", Tag::Enemies},
     {"Bullets", Tag::Bullets},
+    {"Pickups", Tag::Pickups},
     {"WorldBounds", Tag::WorldBounds}
 };
 
@@ -17,6 +18,7 @@ static std::map<Tag, std::string> name_tags {
     {Tag::Player, "Player"},
     {Tag::Enemies, "Enemies"},
     {Tag::Bullets, "Bullets"},
+    {Tag::Pickups, "Pickups"},
     {Tag::WorldBounds, "WorldBounds"}
 };
 
@@ -38,6 +40,9 @@ public:
     std::shared_ptr<CInput> input;
     std::shared_ptr<CPlayerStats> player;
     std::shared_ptr<CDeathSpawner> spawner;
+    std::shared_ptr<CPickupSpawner> pickup_spawner;
+    std::shared_ptr<CScoreReward> score_reward;
+    std::shared_ptr<CWeaponPickup> weapon_pickup;
     
     Entity(const Tag tag, const size_t id) : m_tag(tag), m_id(id) {}
     
