@@ -14,12 +14,14 @@ typedef std::map<std::string, std::map<std::string, std::string>> Config;
 class Game {
     EntityManager m_entity_manager;
     Config m_config;
+    sf::Font m_font;
     sf::RenderWindow m_window {sf::RenderWindow()};
     sf::Clock m_delta_clock {sf::Clock()};
-    bool m_running {true};
-    bool m_paused {false};
     int m_enemy_spawn_interval {50};
+    int m_enemy_spawn_countdown {50};
+    int m_player_spawn_countdown {100};
     int m_player_spawn_interval {100};
+    size_t m_score {0};
     size_t m_frameCount {0};
     float m_shape_rotation {5.f};
     void test_config(Config & config) const;
@@ -29,6 +31,14 @@ class Game {
     const Vec2 bounce_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
     const Vec2 limit_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
 
+    bool m_running {true};
+    bool m_paused {false};
+    bool m_sMovement {true};
+    bool m_sCollision {true};
+    bool m_sInputHandling {true};
+    bool m_sRender {true};
+    bool m_sGUI {true};
+    bool m_sEnemySpawner {true};
 public:
     Game(const std::string configfile);
     ~Game() {};
@@ -59,7 +69,7 @@ public:
     void shoot();
     void shootSpecialWeapon();
     void on_entity_hit(Entity & entity);
-    void on_entity_death(Entity & entity)
+    void on_entity_death(Entity & entity);
     void on_game_over();
     void spawnSmallEntities(const Vec2 position, const CDeathSpawner & spawner);
 };

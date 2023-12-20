@@ -4,6 +4,7 @@
 #include <map>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics/Text.hpp>
 #include "tag.h"
 
 enum ComponentType {
@@ -11,6 +12,7 @@ enum ComponentType {
     Velocity,
     Collider,
     Shape,
+    Text,
     Lifespan,
     Health,
     Weapon,
@@ -30,6 +32,7 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::Velocity, "Velocity"},
     {ComponentType::Collider, "Collider"},
     {ComponentType::Shape, "Shape"},
+    {ComponentType::Text, "Text"},
     {ComponentType::Lifespan, "Lifespan"},
     {ComponentType::Health, "Health"},
     {ComponentType::Weapon, "Weapon"},
@@ -49,6 +52,7 @@ static std::map<std::string, ComponentType> name_components {
     {"Velocity", ComponentType::Velocity},
     {"Collider", ComponentType::Collider},
     {"Shape", ComponentType::Shape},
+    {"Text", ComponentType::Text},
     {"Lifespan", ComponentType::Lifespan},
     {"Health", ComponentType::Health},
     {"Weapon", ComponentType::Weapon},
@@ -161,9 +165,26 @@ public:
     ~CShape() { }
 };
 
+class CText : public Component {
+public:
+    sf::Text text;
+    sf::Color color;
+    CText(
+        const std::string & innerText = "default",
+        const sf::Font & font = sf::Font(),
+        const unsigned int size = 24,
+        const sf::Color & color = sf::Color(255, 255, 255)
+    )
+        : text(sf::Text(innerText, font, size))
+    {
+        text.setColor(color);
+    }
+    ~CText() { }
+};
+
 class CWeapon: public Component {
 public:
-    static enum FireMode {
+    enum FireMode {
         ShotSingle,
         ShotSpread
     };
@@ -187,7 +208,7 @@ public:
 
 class CSpecialWeapon: public Component {
 public:
-    static enum FireMode {
+    enum FireMode {
         SpecialExplosion,
         SpecialFlamethower
     };
@@ -200,8 +221,8 @@ public:
     CSpecialWeapon(
         const float bullet_speed = 10.f
         , const float in_lifespan = 50.f
-        , const int in_amount
-        , const int in_recursion
+        , const int in_amount = 6
+        , const int in_recursion = 2
         , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)
         , const CSpecialWeapon::FireMode fire_mode = CSpecialWeapon::FireMode::SpecialExplosion
     ) 
@@ -323,6 +344,18 @@ public:
     ~CDeathSpawner() { }
 };
 
+class CWeaponPickup : public Component {
+public:
+    enum PickupType {
+        ShotSingle,
+        ShotSpread,
+        SpecialExplosion,
+        SpecialFlamethower
+    };
+    CWeaponPickup() {};
+    ~CWeaponPickup() {};
+};
+
 class CPickupSpawner : public Component {
 public:
     CWeaponPickup payload;
@@ -332,18 +365,7 @@ public:
 
 class CScoreReward : public Component {
 public:
-    CScoreReward() {};
+    int score {100};
+    CScoreReward(int in_score) : score(in_score) {};
     ~CScoreReward() {};
-};
-
-class CWeaponPickup : public Component {
-public:
-    static enum PickupType {
-        ShotSingle,
-        ShotSpread,
-        SpecialExplosion,
-        SpecialFlamethower
-    };
-    CWeaponPickup() {};
-    ~CWeaponPickup() {};
 };

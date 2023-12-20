@@ -8,7 +8,7 @@
 
 void Game::run() {    
     
-    while (m_window.isOpen()) {
+    while (m_running) {
         // create/cleanup entities
         m_entity_manager.update();
 
@@ -19,16 +19,16 @@ void Game::run() {
 
         sUserInput();
         if (!m_paused) {
-            sInputHandling();
+            if (m_sInputHandling) sInputHandling();
             sPlayerInvincibility(deltaTime);
             sLifespan(deltaTime);
             sDamageReact(deltaTime);
-            sMovement(deltaTime);
-            sCollision();
+            if (m_sMovement) sMovement(deltaTime);
+            if (m_sCollision) sCollision();
             sPlayerSpawner(deltaTime);
-            sEnemySpawner(deltaTime);
+            if (m_sEnemySpawner) sEnemySpawner(deltaTime);
         }
-        sGUI();
+        if (m_sGUI) sGUI();
         //Rendering should be last
         sRender(deltaTime);
         m_frameCount++;
@@ -50,8 +50,15 @@ void Game::init(const std::string configfile) {
     const size_t width = std::stoi(m_config["Window"]["width"]);
     const size_t height = std::stoi(m_config["Window"]["height"]);
     const size_t framerate = std::stoi(m_config["Window"]["refreshRate"]);
+    const std::string font_path = m_config["Font"]["path"];
+    m_font = sf::Font();
+    if (!m_font.loadFromFile(font_path)) {
+        throw std::runtime_error("Could not load font at " + font_path);
+    }
     m_enemy_spawn_interval = std::stoi(m_config["Enemy"]["spawnInterval"]);
+    m_enemy_spawn_countdown = m_enemy_spawn_interval;
     m_player_spawn_interval = std::stoi(m_config["Player"]["spawnInterval"]);
+    m_player_spawn_countdown = m_player_spawn_interval;
     m_window.create(sf::VideoMode(width, height), "ImGUI + SFML = <3");
     m_window.setFramerateLimit(framerate);
     ImGui::SFML::Init(m_window);
@@ -59,12 +66,20 @@ void Game::init(const std::string configfile) {
 }
 
 void Game::shutdown() {
+    m_window.close();
     ImGui::SFML::Shutdown();
 }
 
 void Game::spawn_world() {
     const std::shared_ptr<Entity> wb = m_entity_manager.add_entity(Tag::WorldBounds);
     wb->rect = std::make_shared<CRect>(CRect(1920, 1080));
+    const std::shared_ptr<Entity> score = m_entity_manager.add_entity(Tag::ScoreWindow);
+    const int font_size = std::stoi(m_config["Font"]["size"]);
+    const int font_red = std::stoi(m_config["Font"]["red"]);
+    const int font_green = std::stoi(m_config["Font"]["green"]);
+    const int font_blue = std::stoi(m_config["Font"]["blue"]);    
+    score->text = std::make_shared<CText>(CText("Score:", m_font, font_size, sf::Color(font_red, font_green, font_blue)));
+    score->transform = std::make_shared<CTransform>(CTransform(Vec2(0, 0)));
 }
 
 void Game::spawn_player() {
@@ -77,21 +92,6 @@ void Game::spawn_player() {
 }
 
 void Game::setup_player(Entity & player, const Vec2 & position) {
-// Bullet [
-//     shapeRadius=10,
-//     collisionRadius=10,
-//     speed=20,
-//     fillRed=255,
-//     fillGreen=255,
-//     fillBlue=255,
-//     outlineRed=255,
-//     outlineGreen=255,
-//     outlineBlue=255,
-//     outlineThickness=2,
-//     vertices=20,
-//     lifespan=90,
-// ]
-    
     const float shapeRadius = std::stof(m_config["Player"]["shapeRadius"]);
     const float collisionRadius = std::stof(m_config["Player"]["collisionRadius"]);
     const float speed = std::stof(m_config["Player"]["speed"]);
@@ -130,7 +130,7 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     player.transform = std::make_shared<CTransform>(CTransform(position));
     player.velocity = std::make_shared<CVelocity>(CVelocity());
     player.weapon = std::make_shared<CWeapon>(CWeapon(bSpeed, bLifespan, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
-    player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon(bSpeed, bLifespan, bSpecialAmount, bSpecialRecursion, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness));
+    player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon(bSpeed, bLifespan, bSpecialAmount, bSpecialRecursion, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
     player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     player.input = std::make_shared<CInput>(CInput());
@@ -171,6 +171,10 @@ void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {
     const float smallSpeed = std::stof(m_config["Enemy"]["smallSpeed"]);
     const int lifespan = std::stoi(m_config["Enemy"]["lifespan"]);
 
+    const int base_score = std::stoi(m_config["Enemy"]["score"]);
+    const float score_multiplier = std::stof(m_config["Enemy"]["scoreSizeMultiplier"]);
+    const int score = base_score * score_multiplier * (rand_vertices - 2);
+
     const CShape small_prefab = CShape(smallRadius, rand_vertices, sf::Color(0, 0, 0),  sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness);
 
     const int recursion = 0;
@@ -181,6 +185,7 @@ void Game::setup_random_enemy(Entity & enemy, sf::FloatRect spawn_bounds) {
     enemy.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
     enemy.velocity = std::make_shared<CVelocity>(CVelocity(rand_velocity));
     enemy.health = std::make_shared<CHealth>(CHealth(rand_vertices));
+    enemy.score_reward = std::make_shared<CScoreReward>(CScoreReward(score));
     enemy.spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(rand_vertices, small_prefab, lifespan, smallSpeed, recursion, Tag::Enemies));
 }
 
@@ -342,8 +347,24 @@ void Game::sUserInput() {
     while (m_window.pollEvent(event)) {
         ImGui::SFML::ProcessEvent(event);
         if (event.type == sf::Event::Closed) {
-            m_window.close();
             m_running = false;
+        }
+
+        if (event.type == sf::Event::KeyPressed) {
+            switch (event.key.code) {
+                case sf::Keyboard::F5: {
+                    m_sGUI = !m_sGUI;
+                    break;
+                }
+                case sf::Keyboard::F1: {
+                    m_paused = !m_paused;
+                    break;
+                }
+                case sf::Keyboard::Escape: {
+                    m_running = false;
+                    break;
+                }
+            }
         }
 
         if (event.type == sf::Event::MouseMoved) {
@@ -398,15 +419,23 @@ void Game::sInputHandling() {
 void Game::sRender(const sf::Time deltaTime) {
     m_window.clear();
     // Render stuff
-    for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
-        if (entity->shape) {
-            sf::CircleShape & shape = entity->shape->shape;
-            if (entity->transform) {
-                const Vec2 pos = entity->transform->position;                
-                shape.setPosition(sf::Vector2f(pos.x, pos.y));
-                shape.rotate(m_shape_rotation);
+    if (m_sRender) {
+        for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
+            if (entity->shape) {
+                sf::CircleShape & shape = entity->shape->shape;
+                if (entity->transform) {
+                    const Vec2 pos = entity->transform->position;                
+                    shape.setPosition(sf::Vector2f(pos.x, pos.y));
+                    shape.rotate(m_shape_rotation);
+                }
+                m_window.draw(shape);
             }
-            m_window.draw(shape);
+            if (entity->text && entity->transform) {
+                sf::Text & text = entity->text->text;
+                const Vec2 pos = entity->transform->position;
+                text.setPosition(sf::Vector2f(pos.x, pos.y));
+                m_window.draw(text);
+            }
         }
     }
     ImGui::SFML::Render(m_window);
@@ -529,6 +558,12 @@ void Game::on_entity_hit(Entity & entity) {
             entity.player->invincibility_countdown = entity.player->invincibility_duration;
         }
         if (--entity.health->hp <= 0) {
+            if (entity.score_reward) {
+                m_score += entity.score_reward->score;
+                for (std::shared_ptr<Entity> score : m_entity_manager.get_entities(Tag::ScoreWindow)) {
+                    score->text->text.setString("Score: " + std::to_string(m_score));
+                }
+            }
             on_entity_death(entity);            
         }        
     }
@@ -536,9 +571,8 @@ void Game::on_entity_hit(Entity & entity) {
 
 void Game::on_entity_death(Entity & entity) {
     if (entity.spawner && entity.transform) {
-                spawnSmallEntities(entity.transform->position, *entity.spawner.get());
+        spawnSmallEntities(entity.transform->position, *entity.spawner.get());
     }
-    
     entity.destroy();
 }
 
@@ -546,6 +580,7 @@ void Game::spawnSmallEntities(const Vec2 position, const CDeathSpawner & spawner
     const float d_angle = 360 / Vec2::rad_to_deg / spawner.amount;
     const CShape & prefab = spawner.prefab;
     const float radius = prefab.shape.getRadius();
+    const int score = std::stoi(m_config["Enemy"]["smallScore"]);
 
     for (int i = 0; i < spawner.amount; ++i) {
         const float angle = d_angle * i;
@@ -559,6 +594,9 @@ void Game::spawnSmallEntities(const Vec2 position, const CDeathSpawner & spawner
         enemy->velocity = std::make_shared<CVelocity>(CVelocity(n_velocity * spawner.speed));
         enemy->health = std::make_shared<CHealth>(CHealth(1));
         enemy->lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
+        if (spawner.tag == Tag::Enemies) {
+            enemy->score_reward = std::make_shared<CScoreReward>(CScoreReward(score));
+        }
         if (spawner.recursion > 0) {
             enemy->spawner = std::make_shared<CDeathSpawner>(spawner.amount, prefab, spawner.lifespan, spawner.speed, spawner.recursion - 1, spawner.tag);
         }
@@ -582,24 +620,24 @@ void Game::sDamageReact(const sf::Time deltaTime) {
 }
 
 void Game::sEnemySpawner(const sf::Time deltaTime) {
-    if (m_enemy_spawn_interval <= 0) {
+    if (m_enemy_spawn_countdown <= 0) {
         spawn_enemy();
-        m_enemy_spawn_interval = stoi(m_config["Enemy"]["spawnInterval"]);
+        m_enemy_spawn_countdown = m_enemy_spawn_interval;
         return;
     }
-    m_enemy_spawn_interval--;
+    m_enemy_spawn_countdown--;
 }
 
 void Game::sPlayerSpawner(const sf::Time deltaTime) {
     if (m_entity_manager.get_entities(Tag::Player).size() > 0) {
         return;
     }
-    if (m_player_spawn_interval <= 0) {
+    if (m_player_spawn_countdown <= 0) {
         spawn_player();
-        m_player_spawn_interval = stoi(m_config["Player"]["spawnInterval"]);
+        m_player_spawn_countdown = m_enemy_spawn_interval;
         return;
     }
-    m_player_spawn_interval--;
+    m_player_spawn_countdown--;
 }
 
 void Game::sGUI() {
@@ -607,8 +645,353 @@ void Game::sGUI() {
     ImGui::Begin("Geometry Wars");
     static std::vector<Vec2> vectors {};
     
-    ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+    ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_Reorderable;
     if (ImGui::BeginTabBar("TabBar", tab_bar_flags)) {
+
+        if (ImGui::BeginTabItem("Entities")) {
+            ImGui::BeginGroup();
+            // Entity creation form
+            std::vector<std::string> tags;
+            for (auto const & v : tag_names) {
+                tags.push_back(v.first);
+            }
+            static int tag_idx = 0;
+            const std::string tag_preview = tags[tag_idx];
+            if (ImGui::BeginCombo("##tag_select", tag_preview.c_str())) {
+                for (int i = 0; i < tags.size(); ++i) {
+                    const bool is_selected = (tag_idx == i);
+                    if (ImGui::Selectable(tags[i].c_str(), is_selected)) {
+                        tag_idx = i;
+                    }
+                    if (is_selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::Button("add##add_entity")) {
+                m_entity_manager.add_entity(tag_names[tags[tag_idx]]);
+            }
+            ImGui::EndGroup();
+
+            ImGui::BeginChild("Entity list", {400.f, 0}, true);
+            static int entity_idx = -1;
+            static int entity_collection = -1;
+            if (ImGui::BeginTabBar("Entity collections", ImGuiTabBarFlags_None)) {
+                if (ImGui::BeginTabItem("All")) {
+                    if (ImGui::BeginTable("Entity table", 1)) {
+                        const Entities & entities = m_entity_manager.get_entities();
+                        for (int i = 0; i < entities.size(); ++i) {
+                            const bool is_selected = (entity_idx == i);
+                            const std::shared_ptr<Entity> entity = entities[i];
+                            const std::string tag_name = name_tags[entity->tag()];
+                            const int entity_id = entity->id();
+                            ImGui::TableNextColumn();
+                            char bufdel[32];
+                            sprintf(bufdel, "D ##del%d", i);
+                            if (ImGui::Button(bufdel)) {
+                                entity->destroy();
+                            }
+                            ImGui::SameLine();
+                            char bufname[32];
+                            sprintf(bufname, "%s (%d)##entity%d", tag_name.c_str(), entity_id, entity_id);
+                            if (ImGui::Selectable(bufname, is_selected)) {
+                                entity_idx = i;
+                                entity_collection = -1;
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+
+                        }
+                        ImGui::EndTable();
+                    }
+                    ImGui::EndTabItem();
+                }
+                for (auto & tag_r : tag_names) {
+                    const std::string tag_name = tag_r.first;
+                    const Tag tag = tag_r.second;
+                    if (ImGui::BeginTabItem(tag_name.c_str())) {
+                        if (ImGui::BeginTable("Entity table", 1)) {
+                            const Entities & entities = m_entity_manager.get_entities(tag);
+                            for (int i = 0; i < entities.size(); ++i) {
+                                const bool is_selected = (entity_idx == i);
+                                const std::shared_ptr<Entity> entity = entities[i];
+                                const std::string tag_name = name_tags[entity->tag()];
+                                const int entity_id = entity->id();
+                                ImGui::TableNextColumn();
+                                char bufdel[32];
+                                sprintf(bufdel, "D ##del%d", i);
+                                if (ImGui::Button(bufdel)) {
+                                    entity->destroy();
+                                }
+                                ImGui::SameLine();
+                                char bufname[32];
+                                sprintf(bufname, "%s (%d)##entity%d", tag_name.c_str(), entity_id, entity_id);
+                                if (ImGui::Selectable(bufname, is_selected)) {
+                                    entity_idx = i;
+                                    entity_collection = (int)tag;
+                                }
+                                if (is_selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndTable();
+                        }
+                        ImGui::EndTabItem();
+                    }
+                }
+                ImGui::EndTabBar();
+            }
+            ImGui::EndChild();
+
+            ImGui::SameLine();
+
+            ImGui::BeginChild("Components", {400.f, 0}, true);
+            static bool show_components = true;
+            ImGui::Checkbox("show##show_components", &show_components);
+            if (show_components) {                
+                static int comp_idx = -1;
+                if (entity_idx >= 0) {
+                    const Entities & entities = m_entity_manager.get_entities(Tag(entity_collection));
+                    std::shared_ptr<Entity> entity;
+                    if (entities.size() > entity_idx) {
+                        entity = m_entity_manager.get_entities(Tag(entity_collection))[entity_idx];
+                    }
+                    if (entity) {
+                        if (entity->name) {
+                            char buf[32];
+                            sprintf(buf, "Name: %s##comp_name", entity->name->name.c_str());
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Name)) {
+                                comp_idx = ComponentType::Name;
+                            }
+                        } else if (ImGui::Button("+Name##add_name")) {
+                            entity->name = std::make_shared<CName>(CName());
+                        }
+                        if (entity->transform) {
+                            const Vec2 pos = entity->transform->position;
+                            const float rot = entity->transform->rotation;
+                            const float scale = entity->transform->scale;
+                            char buf[32];
+                            sprintf(buf, "Transform: P(%.3f, %.3f), R%.3f, S%.3f##comp_transform", pos.x, pos.y, rot, scale);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Transform)) {
+                                comp_idx = ComponentType::Transform;
+                            }
+                        } else if (ImGui::Button("+Transform##add_transform")) {
+                                const std::shared_ptr<CTransform> transform(new CTransform());
+                                entity->transform = transform;
+                        }
+                        if (entity->velocity) {
+                            const Vec2 vel = entity->velocity->velocity;
+                            char buf[32];
+                            sprintf(buf, "Velocity: (%.3f, %.3f)##comp_velocity", vel.x, vel.y);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Velocity)) {
+                                comp_idx = ComponentType::Velocity;
+                            }
+                        } else if (ImGui::Button("+Velocity##add_velocity")) {
+                                entity->velocity = std::make_shared<CVelocity>(CVelocity());
+                        }
+                        if (entity->player) {
+                            const int max_lives = entity->player->max_lives;
+                            const int lives = entity->player->lives;
+                            const float speed = entity->player->speed;
+                            const int fire_delay = entity->player->fire_delay;
+                            const int special_delay = entity->player->special_delay;
+                            const int inv_dur = entity->player->invincibility_duration;
+                            const int inv_count = entity->player->invincibility_countdown;
+                            const int fire_count = entity->player->fire_countdown;
+                            const int special_count = entity->player->special_countdown;
+                            const int flicker_freq = entity->player->flicker_frequency;
+                            char buf[32];
+                            sprintf(buf, "Player: L:%d/%d, F:%d/%d, SF:%d/%d, I:%d/%d, Fl:%d##comp_player", 
+                                lives, max_lives, fire_count, fire_delay, special_count, special_delay, inv_count, inv_dur, flicker_freq);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::PlayerStats)) {
+                                comp_idx = ComponentType::PlayerStats;
+                            }
+                        } else if (ImGui::Button("+PlayerStats##add_player")) {
+                                entity->player = std::make_shared<CPlayerStats>(CPlayerStats());
+                        }
+                        if (entity->collider) {
+                            const float radius = entity->collider->radius;
+                            char buf[32];
+                            sprintf(buf, "Col Radius: %.3f##comp_collider", radius);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Collider)) {
+                                comp_idx = ComponentType::Collider;
+                            }
+                        } else if (ImGui::Button("+Collider##add_collider")) {
+                                entity->collider = std::make_shared<CCollider>(CCollider());
+                        }
+                        if (entity->lifespan) {
+                            const int countdown = entity->lifespan->countdown;
+                            const int duration = entity->lifespan->duration;
+                            char buf[32];
+                            sprintf(buf, "Lifespan: %d/%d##comp_collider", countdown, duration);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Lifespan)) {
+                                comp_idx = ComponentType::Lifespan;
+                            }
+                        } else if (ImGui::Button("+Lifespan##add_lifespan")) {
+                                entity->lifespan = std::make_shared<CLifespan>(CLifespan());
+                        }
+                        if (entity->health) {
+                            const int hp = entity->health->hp;
+                            const int max_hp = entity->health->max_hp;
+                            const float expansion = entity->health->expansion;
+                            const int duration = entity->health->react_duration;
+                            const int countdown = entity->health->react_countdown;
+                            char buf[32];
+                            sprintf(buf, "HP: %d/%d, Ex%.3f D%d/%d##comp_collider", hp, max_hp, expansion, duration, countdown);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Health)) {
+                                comp_idx = ComponentType::Health;
+                            }
+                        } else if (ImGui::Button("+Health##add_health")) {
+                                entity->health = std::make_shared<CHealth>(CHealth());
+                        }
+                        if (entity->shape) {
+                            const sf::CircleShape & shape = entity->shape->shape;
+                            const float radius = shape.getRadius();
+                            const float scale = shape.getScale().x;
+                            char buf[32];
+                            sprintf(buf, "Shape R:%.3f S:%.3f##comp_shape", radius, scale);
+                            if (ImGui::Selectable(buf, comp_idx == ComponentType::Shape)) {
+                                comp_idx = ComponentType::Shape;
+                            }
+                        } else if (ImGui::Button("+Shape##add_shape")) {
+                                entity->shape = std::make_shared<CShape>(CShape());
+                        }
+
+                    }
+                    
+                }
+            }
+            ImGui::EndChild();
+
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Systems")) {
+            ImGui::BeginGroup();
+            ImGui::Checkbox("Pause", &m_paused);
+            ImGui::Checkbox("sMovement", &m_sMovement);
+            ImGui::Checkbox("sCollision", &m_sCollision);
+            ImGui::Checkbox("sInputHandling", &m_sInputHandling);
+            ImGui::Checkbox("sRender", &m_sRender);
+            ImGui::DragFloat("rotation", &m_shape_rotation, 0.1f, 0.0f, 10.f, "%.1f");
+            ImGui::Checkbox("sGUI", &m_sGUI);
+            ImGui::Checkbox("sEnemySpawner", &m_sEnemySpawner);
+            ImGui::SameLine();
+            if (ImGui::Button("Spawn")) {
+                spawn_enemy();
+            }
+            ImGui::ProgressBar((float)m_enemy_spawn_countdown / (float)m_enemy_spawn_interval);
+            ImGui::DragInt("spawn interval", &m_enemy_spawn_interval, 10.f, 0, 1000);
+            ImGui::EndGroup();
+
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Configuration")) {
+            static bool res_warning = false;
+            static bool refresh_warning = false;
+            static bool fullscreen_warning = false;
+            if (res_warning || refresh_warning || fullscreen_warning) {
+                ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Save config and restart to apply changes.");
+            }
+            if (ImGui::BeginChild("Window##config-window", {0, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                ImGui::SeparatorText("Window");
+                static int res_idx = 0;
+                const std::string current_res = "*"+m_config["Window"]["width"]+"x"+m_config["Window"]["height"];
+                std::vector<std::string> resolutions {current_res, "2560x1440", "1920x1080", "1280x720", "1024x576", "960x540"};
+                ImGui::Text("Resolution");
+                if (ImGui::BeginCombo("##res_select", resolutions[res_idx].c_str())) {
+                    for (int i = 0; i < resolutions.size(); ++i) {
+                        const bool is_selected = (res_idx == i);
+                        if (ImGui::Selectable(resolutions[i].c_str(), is_selected)) {
+                            if (i != 0) {
+                                res_warning = true;
+                            } else {
+                                res_warning = false;
+                            }
+                            res_idx = i;
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                static int refresh_idx = 0;
+                const std::string current_refresh = "*"+m_config["Window"]["refreshRate"];
+                std::vector<std::string> refresh_rates {current_refresh, "144", "120", "60", "30"};
+                ImGui::Text("Refresh");
+                if (ImGui::BeginCombo("##refresh_select", refresh_rates[refresh_idx].c_str())) {
+                    for (int i = 0; i < refresh_rates.size(); ++i) {
+                        const bool is_selected = (refresh_idx == i);
+                        if (ImGui::Selectable(refresh_rates[i].c_str(), is_selected)) {
+                            if (i != 0) {
+                                refresh_warning = true;
+                            } else {
+                                refresh_warning = false;
+                            }
+                            refresh_idx = i;
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine();
+                const bool current_fullscreen = (bool)std::stoi(m_config["Window"]["fullscreen"]);
+                static bool fullscreen = current_fullscreen; 
+                if (ImGui::Checkbox("fullscreen", &fullscreen)) {
+                    if (fullscreen != current_fullscreen) {
+                        fullscreen_warning = true;
+                    } else {
+                        fullscreen_warning = false;
+                    }
+                }
+                ImGui::EndChild();
+            }
+
+            ImGui::SameLine();
+            
+            if (ImGui::BeginChild("Font##config-font", {0, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                ImGui::SeparatorText("Font");
+                static int font_s_idx = 0;
+                const std::string current_font_s = "*"+m_config["Font"]["size"];
+                std::vector<std::string> font_sizes {current_font_s, "16", "24", "32", "48", "60", "72"};
+                ImGui::Text("Size");
+                if (ImGui::BeginCombo("##font_size_select", font_sizes[font_s_idx].c_str())) {
+                    for (int i = 0; i < font_sizes.size(); ++i) {
+                        const bool is_selected = (font_s_idx == i);
+                        if (ImGui::Selectable(font_sizes[i].c_str(), is_selected)) {
+                            font_s_idx = i;
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::EndChild();
+            }
+            
+            if (ImGui::BeginChild("Player##config-player", {700, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                ImGui::Text("Window");
+                ImGui::EndChild();
+            }
+            
+            if (ImGui::BeginChild("Bullet##config-bullet", {700, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                ImGui::Text("Window");
+                ImGui::EndChild();
+            }
+            
+            if (ImGui::BeginChild("Enemy##config-enemy", {700, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                ImGui::Text("Window");
+                ImGui::EndChild();
+            }
+            
+            ImGui::EndTabItem();
+        }
         if (ImGui::BeginTabItem("Vectors")) {
             static char bufx[32] = ""; ImGui::InputText("x", bufx, 32, ImGuiInputTextFlags_CharsDecimal);
             static char bufy[32] = ""; ImGui::InputText("y", bufy, 32, ImGuiInputTextFlags_CharsDecimal);
@@ -682,190 +1065,6 @@ void Game::sGUI() {
                 }
                 ImGui::EndTable();
             }       
-            ImGui::EndChild();
-
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Entities")) {
-            ImGui::BeginGroup();
-            // Entity creation form
-            std::vector<std::string> tags;
-            for (auto const & v : tag_names) {
-                tags.push_back(v.first);
-            }
-            static int tag_idx = 0;
-            const std::string tag_preview = tags[tag_idx];
-            if (ImGui::BeginCombo("##tag_select", tag_preview.c_str())) {
-                for (int i = 0; i < tags.size(); ++i) {
-                    const bool is_selected = (tag_idx == i);
-                    if (ImGui::Selectable(tags[i].c_str(), is_selected)) {
-                        tag_idx = i;
-                    }
-                    if (is_selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            if (ImGui::Button("add##add_entity")) {
-                m_entity_manager.add_entity(tag_names[tags[tag_idx]]);
-            }
-            ImGui::EndGroup();
-
-            ImGui::BeginChild("Entity list", {200.f, 0}, true);
-            static int entity_idx = -1;
-            if (ImGui::BeginTable("Entity table", 1)) {
-                const Entities & entities = m_entity_manager.get_entities();
-                for (int i = 0; i < entities.size(); ++i) {
-                    const bool is_selected = (entity_idx == i);
-                    const std::shared_ptr<Entity> entity = entities[i];
-                    const std::string tag_name = name_tags[entity->tag()];
-                    const int entity_id = entity->id();
-                    ImGui::TableNextColumn();
-                    char bufdel[32];
-                    sprintf(bufdel, "D ##del%d", i);
-                    if (ImGui::Button(bufdel)) {
-                        entity->destroy();
-                    }
-                    ImGui::SameLine();
-                    char bufname[32];
-                    sprintf(bufname, "%s (%d)##entity%d", tag_name.c_str(), entity_id, entity_id);
-                    if (ImGui::Selectable(bufname, is_selected)) {
-                        entity_idx = i;
-                    }
-                    if (is_selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-
-                }
-                ImGui::EndTable();
-            }
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            ImGui::BeginChild("Components", {400.f, 0}, true);
-            static int comp_idx = -1;
-            if (entity_idx >= 0) {
-                const std::shared_ptr<Entity> entity = m_entity_manager.get_entities()[entity_idx];
-                if (entity->name) {
-                    char buf[32];
-                    sprintf(buf, "Name: %s##comp_name", entity->name->name.c_str());
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Name)) {
-                        comp_idx = ComponentType::Name;
-                    }
-                } else {
-                    if (ImGui::Button("+Name##add_name")) {
-                        entity->name = std::make_shared<CName>(CName());
-                    }
-                }
-                if (entity->transform) {
-                    const Vec2 pos = entity->transform->position;
-                    const float rot = entity->transform->rotation;
-                    const float scale = entity->transform->scale;
-                    char buf[32];
-                    sprintf(buf, "Transform: P(%.3f, %.3f), R%.3f, S%.3f##comp_transform", pos.x, pos.y, rot, scale);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Transform)) {
-                        comp_idx = ComponentType::Transform;
-                    }
-                } else {
-                    if (ImGui::Button("+Transform##add_transform")) {
-                        const std::shared_ptr<CTransform> transform(new CTransform());
-                        entity->transform = transform;
-                    }
-
-                }
-                if (entity->velocity) {
-                    const Vec2 vel = entity->velocity->velocity;
-                    char buf[32];
-                    sprintf(buf, "Velocity: (%.3f, %.3f)##comp_velocity", vel.x, vel.y);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Velocity)) {
-                        comp_idx = ComponentType::Velocity;
-                    }
-                } else {
-                    if (ImGui::Button("+Velocity##add_velocity")) {
-                        entity->velocity = std::make_shared<CVelocity>(CVelocity());
-                    }
-                }
-                if (entity->player) {
-                    const int max_lives = entity->player->max_lives;
-                    const int lives = entity->player->lives;
-                    const float speed = entity->player->speed;
-                    const int fire_delay = entity->player->fire_delay;
-                    const int special_delay = entity->player->special_delay;
-                    const int inv_dur = entity->player->invincibility_duration;
-                    const int inv_count = entity->player->invincibility_countdown;
-                    const int fire_count = entity->player->fire_countdown;
-                    const int special_count = entity->player->special_countdown;
-                    const int flicker_freq = entity->player->flicker_frequency;
-                    char buf[32];
-                    sprintf(buf, "Player: L:%d/%d, F:%d/%d, SF:%d/%d, I:%d/%d, Fl:%d##comp_player", 
-                        lives, max_lives, fire_count, fire_delay, special_count, special_delay, inv_count, inv_dur, flicker_freq);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::PlayerStats)) {
-                        comp_idx = ComponentType::PlayerStats;
-                    }
-                } else {
-                    if (ImGui::Button("+PlayerStats##add_player")) {
-                        entity->player = std::make_shared<CPlayerStats>(CPlayerStats());
-                    }
-                }
-                if (entity->collider) {
-                    const float radius = entity->collider->radius;
-                    char buf[32];
-                    sprintf(buf, "Col Radius: %.3f##comp_collider", radius);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Collider)) {
-                        comp_idx = ComponentType::Collider;
-                    }
-                } else {
-                    if (ImGui::Button("+Collider##add_collider")) {
-                        entity->collider = std::make_shared<CCollider>(CCollider());
-                    }
-                }
-                if (entity->lifespan) {
-                    const int countdown = entity->lifespan->countdown;
-                    const int duration = entity->lifespan->duration;
-                    char buf[32];
-                    sprintf(buf, "Lifespan: %d/%d##comp_collider", countdown, duration);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Lifespan)) {
-                        comp_idx = ComponentType::Lifespan;
-                    }
-                } else {
-                    if (ImGui::Button("+Lifespan##add_lifespan")) {
-                        entity->lifespan = std::make_shared<CLifespan>(CLifespan());
-                    }
-                }
-                if (entity->health) {
-                    const int hp = entity->health->hp;
-                    const int max_hp = entity->health->max_hp;
-                    const float expansion = entity->health->expansion;
-                    const int duration = entity->health->react_duration;
-                    const int countdown = entity->health->react_countdown;
-                    char buf[32];
-                    sprintf(buf, "HP: %d/%d, Ex%.3f D%d/%d##comp_collider", hp, max_hp, expansion, duration, countdown);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Health)) {
-                        comp_idx = ComponentType::Health;
-                    }
-                } else {
-                    if (ImGui::Button("+Health##add_health")) {
-                        entity->health = std::make_shared<CHealth>(CHealth());
-                    }
-                }
-                if (entity->shape) {
-                    const sf::CircleShape & shape = entity->shape->shape;
-                    const float radius = shape.getRadius();
-                    const float scale = shape.getScale().x;
-                    char buf[32];
-                    sprintf(buf, "Shape R:%.3f S:%.3f##comp_shape", radius, scale);
-                    if (ImGui::Selectable(buf, comp_idx == ComponentType::Shape)) {
-                        comp_idx = ComponentType::Shape;
-                    }
-                } else {
-                    if (ImGui::Button("+Shape##add_shape")) {
-                        entity->shape = std::make_shared<CShape>(CShape());
-                    }
-                }
-            }
             ImGui::EndChild();
 
             ImGui::EndTabItem();

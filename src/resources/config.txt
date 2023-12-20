@@ -23,13 +23,14 @@ Player [
     outlineThickness=4,
     vertices=8,
     spawnInterval=100,
-    health=2
+    health=2,
 ]
 Enemy [ 
     shapeRadius=32,
     smallRadius=16,
     collisionRadius=32,
     smallCollisionRadius=16,
+    invincibilityDuration=2,
     speedMin=3,
     speedMax=3,
     smallSpeed=1,
@@ -39,14 +40,18 @@ Enemy [
     outlineThickness=2,
     verticesMin=3,
     verticesMax=8,
+    vertSizeMultiplier=1.2,
     lifespan=90,
     spawnInterval=60,
+    score=100,
+    scoreSizeMultiplier=1.5,
+    smallScore=500,
 ]
 Bullet [
     shapeRadius=10,
     collisionRadius=10,
     speed=20,
-    specialRecursion=3,
+    specialRecursion=1,
     specialAmount=6,
     fillRed=255,
     fillGreen=255,
@@ -57,4 +62,14 @@ Bullet [
     outlineThickness=2,
     vertices=20,
     lifespan=90,
+]
+Pickup [
+    shapeRadius=24,
+    collisionRadius=24,
+    outlineRed=255,
+    outlineGreen=255,
+    outlineBlue=255,
+    outlineThickness=2,
+    vertices=5,
+    lifespan=240,
 ]

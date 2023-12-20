@@ -6,6 +6,9 @@ const Entities & EntityManager::get_entities() const {
 }
 
 const Entities & EntityManager::get_entities(const Tag tag)  { 
+    if (tag < 0) {
+        return m_entities;
+    }
     return m_tag_entities[tag];
 }
 
