@@ -14,6 +14,7 @@ enum ComponentType {
     Shape,
     Text,
     Lifespan,
+    Invincibility,
     Health,
     Weapon,
     SpecialWeapon,
@@ -34,6 +35,7 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::Shape, "Shape"},
     {ComponentType::Text, "Text"},
     {ComponentType::Lifespan, "Lifespan"},
+    {ComponentType::Invincibility, "Invincibility"},
     {ComponentType::Health, "Health"},
     {ComponentType::Weapon, "Weapon"},
     {ComponentType::SpecialWeapon, "SpecialWeapon"},
@@ -54,6 +56,7 @@ static std::map<std::string, ComponentType> name_components {
     {"Shape", ComponentType::Shape},
     {"Text", ComponentType::Text},
     {"Lifespan", ComponentType::Lifespan},
+    {"Invincibility", ComponentType::Invincibility},
     {"Health", ComponentType::Health},
     {"Weapon", ComponentType::Weapon},
     {"SpecialWeapon", ComponentType::SpecialWeapon},
@@ -117,12 +120,21 @@ public:
 
 class CLifespan : public Component {
 public:
-    float duration {10.f};
-    float countdown {10.f};
+    int duration {10};
+    int countdown {10};
     CLifespan() { }
-    CLifespan(const float span) : countdown(span), duration(span) { }
+    CLifespan(const int span) : countdown(span), duration(span) { }
     ~CLifespan() { }
 };
+
+class CInvincibility : public Component {
+public:
+    int countdown {10};
+    int duration {10};
+    CInvincibility() { }
+    CInvincibility(const int in_duration) : countdown(in_duratino), duration(in_duration) { }
+    ~CInvincibility() { }
+}
 
 class CHealth : public Component {
 public:
@@ -187,19 +199,24 @@ public:
     enum FireMode {
         ShotSingle,
         ShotSpread
-    };
-    CWeapon::FireMode mode;
-    float speed;
-    float lifespan;
-    CShape bullet;
+    };    
+    float speed {10.f};
+    float lifespan {50.f};
+    int fire_countdown {10};
+    int fire_delay {10};
+    CShape bullet {CShape(5.f, 12, sf::Color(255, 0, 0), sf::Color(0, 0, 0), 0.f)};
+    CWeapon::FireMode mode {CWeapon::FireMode::ShotSingle};
     CWeapon(
-        const float bullet_speed = 10.f
-        , const float in_lifespan = 50.f
-        , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(255, 0, 0), sf::Color(0, 0, 0), 0.f)
-        , const CWeapon::FireMode fire_mode = CWeapon::FireMode::ShotSingle
+        const float bullet_speed
+        , const float in_lifespan
+        , const int in_delay
+        , const CShape bullet_prototype
+        , const CWeapon::FireMode fire_mode
     ) 
         : speed(bullet_speed)
         , lifespan(in_lifespan)
+        , fire_countdown(in_delay)
+        , fire_delay(in_delay)
         , bullet(bullet_prototype)
         , mode(fire_mode) 
     { }
@@ -215,12 +232,15 @@ public:
     CSpecialWeapon::FireMode mode;
     float speed;
     float lifespan;
+    int fire_countdown {10};
+    int fire_delay {10};
     int recursion;
     int amount;
     CShape bullet;
     CSpecialWeapon(
         const float bullet_speed = 10.f
         , const float in_lifespan = 50.f
+        , const int in_delay
         , const int in_amount = 6
         , const int in_recursion = 2
         , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)
@@ -228,6 +248,8 @@ public:
     ) 
         : speed(bullet_speed)
         , lifespan(in_lifespan)
+        , fire_countdown(in_delay)
+        , fire_delay(in_delay)
         , amount(in_amount)
         , recursion(in_recursion)
         , bullet(bullet_prototype)
@@ -289,30 +311,15 @@ public:
     int max_lives;
     int lives;
     float speed;    
-    int fire_delay;
-    int special_delay;
-    int invincibility_duration;
-    int fire_countdown;
-    int special_countdown;    
-    int invincibility_countdown;
     int flicker_frequency;
     CPlayerStats(
         const int in_lives = 3
         , const float in_speed = 10.f
-        , const int in_fire_delay = 10
-        , const int in_special_delay = 180
-        , const int in_invincibility_duration = 100
         , const int in_flicker_frequency = 3
     )
         : max_lives(in_lives)
         , lives(in_lives)
         , speed(in_speed)
-        , fire_delay(in_fire_delay)
-        , special_delay(in_special_delay)
-        , invincibility_duration(in_invincibility_duration)
-        , fire_countdown(0)
-        , special_countdown(0) 
-        , invincibility_countdown(in_invincibility_duration)
         , flicker_frequency(in_flicker_frequency)
     { }
     ~CPlayerStats() { }
@@ -352,14 +359,32 @@ public:
         SpecialExplosion,
         SpecialFlamethower
     };
-    CWeaponPickup() {};
+    PickupType type {PickupType::ShotSingle};
+    CWeaponPickup(
+        CWeaponPickup::PickupType in_type
+    )
+        : type(in_type)
+    {};
     ~CWeaponPickup() {};
 };
 
 class CPickupSpawner : public Component {
 public:
-    CWeaponPickup payload;
-    CPickupSpawner() {};
+    CWeaponPickup payload {CWeaponPickup()};    
+    CShape shape {CShape()};
+    int lifespan {500};
+    int collision {32};
+    CPickupSpawner(
+        CWeaponPickup & in_payload,
+        CShape & in_shape,
+        int in_lifespan,
+        int in_collision
+    ) 
+        : payload(in_payload)
+        , shape(in_shape)
+        , lifespan(in_lifespan)
+        , collision(in_collision)
+    {};
     ~CPickupSpawner() {};
 };
 

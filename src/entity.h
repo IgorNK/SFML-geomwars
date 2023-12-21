@@ -33,6 +33,7 @@ public:
     std::shared_ptr<CVelocity> velocity;
     std::shared_ptr<CCollider> collider;
     std::shared_ptr<CLifespan> lifespan;
+    std::shared_ptr<CInvincibility> invincibility;
     std::shared_ptr<CHealth> health;
     std::shared_ptr<CWeapon> weapon;
     std::shared_ptr<CSpecialWeapon> special_weapon;

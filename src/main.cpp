@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[]) {
     try {
-        Game g("resources/config.txt");
+        Game g("user_config.txt", "resources/config.txt");
         g.run(); 
         return 0;
     }
