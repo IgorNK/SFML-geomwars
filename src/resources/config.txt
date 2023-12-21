@@ -1,4 +1,7 @@
 Window [width=1920, height=1080, refreshRate=60, fullscreen=1]
+Global [
+    shapeRotation=1.6,
+]
 Font [ 
     path=resources/ShareTech-Regular.ttf,
     size=24,
@@ -40,7 +43,7 @@ Enemy [
     outlineThickness=2,
     verticesMin=3,
     verticesMax=8,
-    vertSizeMultiplier=1.2,
+    vertSizeMultiplier=1.5,
     smallLifespan=90,
     spawnInterval=60,
     score=100,
@@ -58,11 +61,11 @@ Boss [
     smallSpeed=1,
     outlineRed=10,
     outlineGreen=10,
-    outlneBlue=10,
+    outlineBlue=10,
     outlineThickness=4,
     verticesMin=3,
     verticesMax=6,
-    vertSizeMultiplier=1.2,
+    vertSizeMultiplier=1.5,
     smallLifespan=180,
     scoreRequirement=25000,
     scoreRequirementMultiplier=1.5,
@@ -74,7 +77,7 @@ Bullet [
     shapeRadius=10,
     collisionRadius=10,
     speed=20,
-    specialRecursion=1,
+    specialRecursion=0,
     specialAmount=6,
     fillRed=255,
     fillGreen=255,

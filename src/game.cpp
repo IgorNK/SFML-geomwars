@@ -65,6 +65,7 @@ void Game::init(const std::string & configfile) {
         throw std::runtime_error(msg);
     }
 
+    const std::string font_path = m_config["Font"]["path"];
     m_font = sf::Font();
     if (!m_font.loadFromFile(font_path)) {
         throw std::runtime_error("Could not load font at " + font_path);
@@ -74,7 +75,6 @@ void Game::init(const std::string & configfile) {
     const size_t width = std::stoi(m_config["Window"]["width"]);
     const size_t height = std::stoi(m_config["Window"]["height"]);
     const size_t framerate = std::stoi(m_config["Window"]["refreshRate"]);
-    const std::string font_path = m_config["Font"]["path"];
     
     
     m_enemy_spawn_interval = std::stoi(m_config["Enemy"]["spawnInterval"]);
@@ -86,6 +86,8 @@ void Game::init(const std::string & configfile) {
     m_score_to_boss_base = std::stoi(m_config["Boss"]["scoreRequirement"]);
     m_score_to_boss = m_score + m_score_to_boss_base;
     m_score_to_boss_mult = std::stof(m_config["Boss"]["scoreRequirementMultiplier"]);
+
+    m_shape_rotation = std::stof(m_config["Global"]["shapeRotation"]);
 
     m_window.create(sf::VideoMode(width, height), "ImGUI + SFML = <3");
     m_window.setFramerateLimit(framerate);
@@ -157,7 +159,7 @@ void Game::setup_player(Entity & player, const Vec2 & position) {
     player.player = std::make_shared<CPlayerStats>(CPlayerStats(3, speed, flickerRate));
     player.transform = std::make_shared<CTransform>(CTransform(position));
     player.velocity = std::make_shared<CVelocity>(CVelocity());
-    player.weapon = std::make_shared<CWeapon>(CWeapon(bSpeed, bLifespan, fireRate, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
+    player.weapon = std::make_shared<CWeapon>(CWeapon(bSpeed, bLifespan, fireRate, CWeapon::FireMode::ShotSingle, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
     player.special_weapon = std::make_shared<CSpecialWeapon>(CSpecialWeapon(bSpeed, bLifespan, specialFireRate, bSpecialAmount, bSpecialRecursion, CShape(bRadius, bVertices, sf::Color(bFillRed, bFillGreen, bFillBlue), sf::Color(bOutlineRed, bOutlineGreen, bOutlineBlue), bOutlineThickness)));
     player.shape = std::make_shared<CShape>(CShape(shapeRadius, vertices, sf::Color(fillRed, fillGreen, fillBlue), sf::Color(outlineRed, outlineGreen, outlineBlue), outlineThickness));
     player.collider = std::make_shared<CCollider>(CCollider(collisionRadius));
@@ -188,10 +190,16 @@ void Game::spawn_boss() {
     }
 }
 
-void Game::setup_random_enemy(Entity & enemy, const bool isBoss, sf::FloatRect & spawn_bounds) {    
+void Game::setup_random_enemy(Entity & enemy, const bool isBoss, const sf::FloatRect & spawn_bounds) {    
     std::string configHeader = "Enemy";
     if (isBoss) {
         configHeader = "Boss";
+    }
+
+    std::shared_ptr<Entity> player;
+    for (auto e : m_entity_manager.get_entities(Tag::Player)) {
+        player = std::move(e);
+        break;
     }
     
     const float shapeRadius = std::stof(m_config[configHeader]["shapeRadius"]);
@@ -204,10 +212,10 @@ void Game::setup_random_enemy(Entity & enemy, const bool isBoss, sf::FloatRect &
     const int outlineThickness = std::stoi(m_config[configHeader]["outlineThickness"]);
     const int verticesMin = std::stoi(m_config[configHeader]["verticesMin"]);
     const int verticesMax = std::stoi(m_config[configHeader]["verticesMax"]);
-    const int vertSizeMultiplier = std::stoi(m_config[configHeader]["vertSizeMultiplier"]);    
+    const float vertSizeMultiplier = std::stof(m_config[configHeader]["vertSizeMultiplier"]);
 
-    const float rand_x = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.width + spawn_bounds.left;
-    const float rand_y = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.height + spawn_bounds.top;
+    
+    
     const float rand_speed = (float)(std::rand()) / (float)(RAND_MAX) * (speedMax - speedMin) + speedMin;
     const float rand_angle = (float)(std::rand()) / (float)(RAND_MAX) * 360;
     const Vec2 rand_velocity = Vec2(0, 1).rotate_deg(rand_angle) * rand_speed;
@@ -221,22 +229,37 @@ void Game::setup_random_enemy(Entity & enemy, const bool isBoss, sf::FloatRect &
 
     const int base_score = std::stoi(m_config[configHeader]["score"]);
     const float score_multiplier = std::stof(m_config[configHeader]["scoreSizeMultiplier"]);
-    const int score = base_score * (1 + (score_multiplier * (rand_vertices - verticesMin) - 1));
-    const int radius = shapeRadius * (1 + (vertSizeMultiplier * (rand_vertices - verticesMin) - 1));
-    const int scaledCollisionRadius = collisionRadius * (1 + (vertSizeMultiplier * (rand_vertices - verticesMin) - 1));
+    const int score = base_score + base_score * ((score_multiplier - 1) * (rand_vertices - verticesMin));
+    const float radius = shapeRadius + shapeRadius * ((vertSizeMultiplier - 1) * (rand_vertices - verticesMin));
+    const int scaledCollisionRadius = collisionRadius + collisionRadius * ((vertSizeMultiplier - 1) * (rand_vertices - verticesMin));
+    
+    float rand_x = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.width + spawn_bounds.left;
+    float rand_y = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.height + spawn_bounds.top;
+
+    if (player) {
+        const float right = player->transform->position.x + player->collider->radius * 2 + scaledCollisionRadius;
+        const float left = player->transform->position.x - player->collider->radius * 2 - scaledCollisionRadius;
+        const float up = player->transform->position.y - player->collider->radius * 2 - scaledCollisionRadius;
+        const float down = player->transform->position.y + player->collider->radius * 2 + scaledCollisionRadius;
+        while (rand_x < right && rand_x > left) {
+            rand_x = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.width + spawn_bounds.left;
+        }
+        while (rand_y < down && rand_y > up) {
+            rand_y = (float)(std::rand()) / (float)(RAND_MAX) * spawn_bounds.height + spawn_bounds.top;
+        }
+    }
 
     sf::Color fillColor = sf::Color(0, 0, 0);
     sf::Color outlineColor = sf::Color(outlineRed, outlineGreen, outlineBlue);
     sf::Color smallFillColor = sf::Color(0, 0, 0);
     sf::Color smallOutlineColor = sf::Color(outlineRed, outlineGreen, outlineBlue);
     if (isBoss) {
-        const std::map<CWeaponPickup::PickupType, sf::Color> types {
+        std::map<CWeaponPickup::PickupType, sf::Color> types {
             {CWeaponPickup::PickupType::ShotSingle, sf::Color(255, outlineGreen, outlineBlue)},
-            {CWeaponPickup::PickupType::ShotSpread, sf::Color(outelineRed, 255, outlineBlue)},
-            {CWeaponPickup::PickupType::SpecialExplosion, sf::Color(outelineRed, outlineGreen, 255)},
-            {CWeaponPickup::PickupType::SpecialFlamethower, sf::Color(255, 255, outlineBlue)}
+            {CWeaponPickup::PickupType::ShotSpread, sf::Color(outlineRed, 255, outlineBlue)},
+            {CWeaponPickup::PickupType::ShotLaser, sf::Color(outlineRed, outlineGreen, 255)},
         };
-        const int pickup_idx = std::abs((float)(std::rand()) / (float)(RAND_MAX) + types.size() - 1);
+        const int pickup_idx = std::abs((float)(std::rand()) / (float)(RAND_MAX) * (types.size() + 1) - 1);
         const CWeaponPickup::PickupType pickup_type = (CWeaponPickup::PickupType)pickup_idx;
         outlineColor = types[pickup_type];
         smallOutlineColor = outlineColor;
@@ -254,7 +277,7 @@ void Game::setup_random_enemy(Entity & enemy, const bool isBoss, sf::FloatRect &
             p_radius,
             p_verts,
             p_fillColor,
-            p_putlineColor,
+            p_outlineColor,
             p_thickness
         );
 
@@ -278,7 +301,7 @@ void Game::setup_random_enemy(Entity & enemy, const bool isBoss, sf::FloatRect &
 void Game::shoot() {
     for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
         if (player->weapon && player->transform) {
-            if (player.fire_countdown <= 0) {
+            if (player->weapon->fire_countdown <= 0) {
                 const Vec2 position = player->transform->position.clone();
                 const float rotation = player->transform->rotation;
                 const Vec2 velocity = Vec2::forward().rotate_rad(rotation).normalize() * player->weapon->speed;
@@ -292,15 +315,18 @@ void Game::shoot() {
                         break;
                     }
                     case (CWeapon::FireMode::ShotSpread): {
-                        const float spread_rad = 30 / Vec::rad_to_deg;
-                        const int amount = 3;
-                        float rot = -spread_rad / amount;
-                        Vec2 r_vel = velocity.clone().rotate_rad(rot);
+                        const float spread_rad = 30 / Vec2::rad_to_deg;
+                        const int amount = 2 + player->weapon->power;
+                        const float rot = spread_rad / amount;
+                        Vec2 r_vel = velocity.clone().rotate_rad(-rot);
                         for (int i = 0; i < amount; ++i) {
                             spawn_bullet(position, rot, r_vel, bullet_prefab, collision_radius, lifespan);
-                            rot += spread_deg / amount;
-                            r_vel.rotate_rot(rot);
+                            r_vel.rotate_rad(rot);
                         }
+                        break;
+                    }
+                    case (CWeapon::FireMode::ShotLaser): {
+                        
                         break;
                     }
                     default: break;
@@ -327,7 +353,7 @@ const std::shared_ptr<Entity> Game::spawn_bullet(const Vec2 & position, const fl
 void Game::shootSpecialWeapon() {
     for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
         if (player->special_weapon && player->transform) {
-            if (player->special_countdown <= 0) {
+            if (player->special_weapon->fire_countdown <= 0) {
                 const Vec2 position = player->transform->position.clone();
                 const float rotation = player->transform->rotation;
                 const Vec2 velocity = Vec2::forward().rotate_rad(rotation).normalize() * player->special_weapon->speed;
@@ -337,14 +363,38 @@ void Game::shootSpecialWeapon() {
 
                 switch(player->special_weapon->mode) {
                     case (CSpecialWeapon::FireMode::SpecialExplosion): {
-                        const std::shared_ptr<Entity> bullet = spawn_special_bullet(position, rotation, velocity, bullet_prefab, collision_radius, lifespan);
+                        const std::shared_ptr<Entity> bullet = spawn_special_bullet(position, rotation, bullet_prefab, collision_radius, lifespan);
                         const float small_speed = player->special_weapon->speed;
                         const int small_lifespan = lifespan / 4;
                         const int small_amount = player->special_weapon->amount;
+                        bullet->velocity = std::make_shared<CVelocity>(CVelocity(velocity));
                         bullet->spawner = std::make_shared<CDeathSpawner>(CDeathSpawner(small_amount, bullet_prefab, small_lifespan, small_speed, player->special_weapon->recursion, Tag::Bullets));
                         break;
                     }
-                    case (CSpecialWeapon::FireMode::SpecialFlamethower): {
+                    case (CSpecialWeapon::FireMode::SpecialRotor): {                                            
+                        const float spread_rad = 360 / Vec2::rad_to_deg;
+                        const int amount = 3 + player->special_weapon->power;
+                        const float radius = 80 + player->special_weapon->power * 40;
+                        const float speed = 5 + player->special_weapon->power;
+                        const float rot = spread_rad / amount;
+
+                        for (int i = 0; i < amount; ++i) {
+                            const std::shared_ptr<Entity> bullet = spawn_special_bullet(position, rot * i, bullet_prefab, collision_radius, lifespan);
+                            bullet->orbit = std::make_shared<COrbit>(COrbit(*player->transform.get(), radius, speed));
+                        }
+                        break;
+                    }
+                    case (CSpecialWeapon::FireMode::SpecialFlamethrower): {
+                        const float spread_rad = 360 / Vec2::rad_to_deg;
+                        const int amount = 3 + player->special_weapon->power;
+                        const float radius = 80 + player->special_weapon->power * 40;
+                        const float speed = 5 + player->special_weapon->power;
+                        const float rot = spread_rad / amount;
+
+                        for (int i = 0; i < amount; ++i) {
+                            const std::shared_ptr<Entity> bullet = spawn_special_bullet(position, rot * i, bullet_prefab, collision_radius, lifespan);
+                            bullet->orbit = std::make_shared<COrbit>(COrbit(*player->transform.get(), radius, speed));
+                        }
                         break;
                     }
                     default: break;
@@ -355,10 +405,9 @@ void Game::shootSpecialWeapon() {
     }
 }
 
-const std::shared_ptr<Entity> Game::spawn_special_bullet(const Vec2 & position, const float rotation, const Vec2 & velocity, const CShape & bullet_prefab, const float collision_radius, const int lifespan) {
+const std::shared_ptr<Entity> Game::spawn_special_bullet(const Vec2 & position, const float rotation, const CShape & bullet_prefab, const float collision_radius, const int lifespan) {
     const std::shared_ptr<Entity> bullet = m_entity_manager.add_entity(Tag::Bullets);
     bullet->transform = std::make_shared<CTransform>(CTransform(position, rotation));
-    bullet->velocity = std::make_shared<CVelocity>(CVelocity(velocity));
     bullet->shape = std::make_shared<CShape>(CShape(bullet_prefab));
     bullet->collider = std::make_shared<CCollider>(CCollider(collision_radius));
     bullet->name = std::make_shared<CName>(CName("Bullet"));
@@ -381,7 +430,7 @@ void Game::test_spawn() {
 void Game::sLifespan(const sf::Time & deltaTime) {
     for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
         if (entity->lifespan) {
-            float & countdown = entity->lifespan->countdown;
+            int & countdown = entity->lifespan->countdown;
             const float duration = entity->lifespan->duration;
             if (countdown <= 0) {
                 on_entity_death(*entity.get());
@@ -427,7 +476,7 @@ void Game::sEffects(const sf::Time & deltaTime) {
     }
 }
 
-void Game::sTimers(sf::Time & deltaTime) {
+void Game::sTimers(const sf::Time & deltaTime) {
     for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {
         if (entity->invincibility && entity->invincibility->countdown > 0) {
             --entity->invincibility->countdown;
@@ -608,6 +657,15 @@ void Game::sMovement(const sf::Time & deltaTime) {
             
             pos += vel;
         }
+        if (entity->orbit && entity->transform) {
+            const Vec2 parent_pos = entity->orbit->target.position;
+            const Vec2 pos = (parent_pos + Vec2::forward().rotate_rad(entity->transform->rotation).rotate_deg(entity->orbit->angle) * entity->orbit->radius);
+            entity->orbit->angle += entity->orbit->speed;
+            if (entity->orbit->angle == 360) {
+                entity->orbit->angle = 0;
+            }
+            entity->transform->position = pos;
+        }
     }
 }
 
@@ -649,11 +707,14 @@ const Vec2 Game::limit_movement(const CVelocity & velocity, const CRect & bounds
 
 void Game::sCollision() {
     for (const std::shared_ptr<Entity> enemy : m_entity_manager.get_entities(Tag::Enemies)) {
-        if (enemy->invincibility && enemy->invincibility->countdown > 0) {
+        if (!enemy->is_alive() || (enemy->invincibility && enemy->invincibility->countdown > 0)) {
             continue;
         }
         if (enemy->transform && enemy->collider) {
             for (const std::shared_ptr<Entity> bullet : m_entity_manager.get_entities(Tag::Bullets)) {
+                if (!bullet->is_alive()) {
+                    continue;
+                }
                 if (bullet->transform && bullet->collider) {
                     if (collides(*bullet->transform.get(), *enemy->transform.get(), *bullet->collider.get(), *enemy->collider.get())) {
                         on_entity_hit(*bullet.get());
@@ -663,6 +724,9 @@ void Game::sCollision() {
             }
             for (const std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
                 if (player->transform && player->collider) {
+                    if (!player->is_alive() || (player->invincibility && player->invincibility->countdown > 0)) {
+                        continue;
+                    }
                     if (collides(*player->transform.get(), *enemy->transform.get(), *player->collider.get(), *enemy->collider.get())) {
                         on_entity_hit(*player.get());
                         on_entity_hit(*enemy.get());
@@ -737,20 +801,55 @@ void Game::on_entity_death(Entity & entity) {
 }
 
 void Game::on_pickup(const CWeaponPickup::PickupType type) {
-    switch (type) {
-        case CWeaponPickup::PickupType::ShotSingle: {
-            break;
+    for (std::shared_ptr<Entity> player : m_entity_manager.get_entities(Tag::Player)) {
+        if (!player->weapon || !player->special_weapon) {
+            return;
         }
-        case CWeaponPickup::PickupType::ShotSpread: {
-            break;
+        switch (type) {
+            case CWeaponPickup::PickupType::ShotSingle: {
+                std::cout << "Red Single!\n";
+                if (player->weapon->mode == CWeapon::FireMode::ShotSingle) {
+                    if (player->weapon->power < 4) {
+                        ++player->weapon->power;
+                        ++player->special_weapon->power;
+                    } else {
+                        m_score += 500;
+                    }
+                } else {
+                    player->weapon->power = 0;
+                    player->weapon->mode = CWeapon::FireMode::ShotSingle;
+                    player->special_weapon->mode = CSpecialWeapon::FireMode::SpecialExplosion;
+                }
+                break;
+            }
+            case CWeaponPickup::PickupType::ShotSpread: {
+                std::cout << "Green Spread!\n";
+                if (player->weapon->mode == CWeapon::FireMode::ShotSpread) {
+                    ++player->weapon->power;
+                    ++player->special_weapon->power;
+                } else {
+                    player->weapon->power = 0;
+                    player->weapon->mode = CWeapon::FireMode::ShotSpread;
+                    player->special_weapon->mode = CSpecialWeapon::FireMode::SpecialRotor;
+                }
+                break;
+            }
+            case CWeaponPickup::PickupType::ShotLaser: {
+                if (player->weapon->mode == CWeapon::FireMode::ShotLaser) {
+                    ++player->weapon->power;
+                    ++player->special_weapon->power;
+                } else {
+                    player->weapon->power = 0;
+                    player->weapon->mode = CWeapon::FireMode::ShotLaser;
+                    player->special_weapon->mode = CSpecialWeapon::FireMode::SpecialFlamethrower;
+                }
+                break;
+            }
+            default: {
+                break;
+            }
         }
-        case CWeaponPickup::PickupType::SpecialExplosion: {
-            break;
-        }
-        case CWeaponPickup::PickupType::SpecialFlamethower: {
-            break;
-        }
-        default: break;
+
     }
 }
 
@@ -782,17 +881,17 @@ void Game::spawnSmallEntities(const Vec2 & position, const CDeathSpawner & spawn
 }
 
 void Game::spawnPickup(const Vec2 & position, const CPickupSpawner & spawner) {
-    const CWeaponPickup & prefab = spawner.prefab;
+    const CWeaponPickup & prefab = spawner.payload;
     const CShape & shape = spawner.shape;
     const float radius = shape.shape.getRadius();
 
-    const std::make_shared<Entity> pickup = m_entity_manager.add_entity(Tag::Pickups);
+    const std::shared_ptr<Entity> pickup = m_entity_manager.add_entity(Tag::Pickups);
     pickup->name = std::make_shared<CName>(CName("Pickup"));
     pickup->transform = std::make_shared<CTransform>(CTransform(position.x, position.y));
     pickup->shape = std::make_shared<CShape>(CShape(shape));
     pickup->collider = std::make_shared<CCollider>(CCollider(radius));
     pickup->lifespan = std::make_shared<CLifespan>(CLifespan(spawner.lifespan));
-    pickup->pickup = std::make_shared<CWeaponPickup>(CWeaponPickup(prefab));
+    pickup->weapon_pickup = std::make_shared<CWeaponPickup>(CWeaponPickup(prefab));
 }
 
 void Game::sDamageReact(const sf::Time & deltaTime) {
@@ -984,14 +1083,10 @@ void Game::sGUI() {
                             const int max_lives = entity->player->max_lives;
                             const int lives = entity->player->lives;
                             const float speed = entity->player->speed;
-                            const int fire_delay = entity->player->fire_delay;
-                            const int special_delay = entity->player->special_delay;
-                            const int fire_count = entity->player->fire_countdown;
-                            const int special_count = entity->player->special_countdown;
                             const int flicker_freq = entity->player->flicker_frequency;
                             char buf[32];
-                            sprintf(buf, "Player: L:%d/%d, F:%d/%d, SF:%d/%d, Fl:%d##comp_player", 
-                                lives, max_lives, fire_count, fire_delay, special_count, special_delay, flicker_freq);
+                            sprintf(buf, "Player: L:%d/%d, Fl:%d##comp_player", 
+                                lives, max_lives, flicker_freq);
                             if (ImGui::Selectable(buf, comp_idx == ComponentType::PlayerStats)) {
                                 comp_idx = ComponentType::PlayerStats;
                             }
@@ -1068,10 +1163,66 @@ void Game::sGUI() {
             if (ImGui::Button("Spawn")) {
                 spawn_enemy();
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Boss")) {
+                spawn_boss();
+            }
             ImGui::ProgressBar((float)m_enemy_spawn_countdown / (float)m_enemy_spawn_interval);
             ImGui::DragInt("spawn interval", &m_enemy_spawn_interval, 10.f, 0, 1000);
             ImGui::EndGroup();
 
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Weapons")) {
+            std::shared_ptr<Entity> player;
+            for (auto e : m_entity_manager.get_entities(Tag::Player)) {
+                player = std::move(e);
+            }
+            if (player && player->weapon && player->special_weapon) {
+                static CWeapon::FireMode & primary_mode = player->weapon->mode;
+                static CSpecialWeapon::FireMode & secondary_mode = player->special_weapon->mode;
+                static int & primary_power = player->weapon->power;
+                static int & secondary_power = player->special_weapon->power;
+                const char min = 0;
+                const char max = 4;
+                const std::vector<std::string> primary_modes {"Single", "Spread", "Laser"};
+                const std::vector<std::string> secondary_modes {"Explosion", "Rotor", "Flamethrower"};
+                
+                if (ImGui::BeginChild("Primary##weapon-primary", {0, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                    if (ImGui::BeginCombo("##primary_select", primary_modes[primary_mode].c_str())) {
+                        for (int i = 0; i < primary_modes.size(); ++i) {
+                            const bool is_selected = (primary_mode == i);
+                            if (ImGui::Selectable(primary_modes[i].c_str(), is_selected)) {
+                                primary_mode = (CWeapon::FireMode)i;
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::SameLine();
+                    ImGui::SliderScalar("power", ImGuiDataType_U8, &primary_power, &min, &max, "%d");
+                    ImGui::EndChild();
+                }
+                if (ImGui::BeginChild("Secondary##weapon-secondary", {0, 0}, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
+                    if (ImGui::BeginCombo("##secondary_select", secondary_modes[secondary_mode].c_str())) {
+                        for (int i = 0; i < secondary_modes.size(); ++i) {
+                            const bool is_selected = (primary_mode == i);
+                            if (ImGui::Selectable(secondary_modes[i].c_str(), is_selected)) {
+                                secondary_mode = (CSpecialWeapon::FireMode)i;
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::SameLine();
+                    ImGui::SliderScalar("power", ImGuiDataType_U8, &secondary_power, &min, &max, "%d");
+                    ImGui::EndChild();
+                }
+            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Configuration")) {

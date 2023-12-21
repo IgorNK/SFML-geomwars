@@ -10,6 +10,7 @@
 enum ComponentType {
     Transform,
     Velocity,
+    Orbit,
     Collider,
     Shape,
     Text,
@@ -31,6 +32,7 @@ enum ComponentType {
 static std::map<ComponentType, std::string> component_names {
     {ComponentType::Transform, "Transform"},
     {ComponentType::Velocity, "Velocity"},
+    {ComponentType::Orbit, "Orbit"},
     {ComponentType::Collider, "Collider"},
     {ComponentType::Shape, "Shape"},
     {ComponentType::Text, "Text"},
@@ -52,6 +54,7 @@ static std::map<ComponentType, std::string> component_names {
 static std::map<std::string, ComponentType> name_components {
     {"Transform", ComponentType::Transform},
     {"Velocity", ComponentType::Velocity},
+    {"Orbit", ComponentType::Orbit},
     {"Collider", ComponentType::Collider},
     {"Shape", ComponentType::Shape},
     {"Text", ComponentType::Text},
@@ -110,6 +113,25 @@ public:
     ~CVelocity() { }
 };
 
+class COrbit : public Component {
+public:
+    const CTransform & target;
+    float angle;
+    float radius;
+    float speed;
+    COrbit(
+        const CTransform & in_target, 
+        const float in_radius, 
+        const float in_speed
+    ) 
+        : target(in_target)
+        , angle(0.f)
+        , radius(in_radius)
+        , speed(in_speed) 
+    {}
+    ~COrbit() {}
+};
+
 class CCollider : public Component {
 public:
     float radius {30.f};
@@ -132,9 +154,9 @@ public:
     int countdown {10};
     int duration {10};
     CInvincibility() { }
-    CInvincibility(const int in_duration) : countdown(in_duratino), duration(in_duration) { }
+    CInvincibility(const int in_duration) : countdown(in_duration), duration(in_duration) { }
     ~CInvincibility() { }
-}
+};
 
 class CHealth : public Component {
 public:
@@ -198,20 +220,22 @@ class CWeapon: public Component {
 public:
     enum FireMode {
         ShotSingle,
-        ShotSpread
+        ShotSpread,
+        ShotLaser
     };    
     float speed {10.f};
     float lifespan {50.f};
     int fire_countdown {10};
     int fire_delay {10};
+    int power {0};
     CShape bullet {CShape(5.f, 12, sf::Color(255, 0, 0), sf::Color(0, 0, 0), 0.f)};
     CWeapon::FireMode mode {CWeapon::FireMode::ShotSingle};
     CWeapon(
         const float bullet_speed
         , const float in_lifespan
         , const int in_delay
-        , const CShape bullet_prototype
         , const CWeapon::FireMode fire_mode
+        , const CShape bullet_prototype
     ) 
         : speed(bullet_speed)
         , lifespan(in_lifespan)
@@ -227,20 +251,22 @@ class CSpecialWeapon: public Component {
 public:
     enum FireMode {
         SpecialExplosion,
-        SpecialFlamethower
+        SpecialRotor,
+        SpecialFlamethrower,
     };
     CSpecialWeapon::FireMode mode;
     float speed;
     float lifespan;
     int fire_countdown {10};
     int fire_delay {10};
+    int power {0};
     int recursion;
     int amount;
     CShape bullet;
     CSpecialWeapon(
         const float bullet_speed = 10.f
         , const float in_lifespan = 50.f
-        , const int in_delay
+        , const int in_delay = 100.f
         , const int in_amount = 6
         , const int in_recursion = 2
         , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)
@@ -356,10 +382,10 @@ public:
     enum PickupType {
         ShotSingle,
         ShotSpread,
-        SpecialExplosion,
-        SpecialFlamethower
+        ShotLaser
     };
     PickupType type {PickupType::ShotSingle};
+    CWeaponPickup() {};
     CWeaponPickup(
         CWeaponPickup::PickupType in_type
     )
@@ -375,8 +401,8 @@ public:
     int lifespan {500};
     int collision {32};
     CPickupSpawner(
-        CWeaponPickup & in_payload,
-        CShape & in_shape,
+        const CWeaponPickup & in_payload,
+        const CShape & in_shape,
         int in_lifespan,
         int in_collision
     ) 

@@ -27,7 +27,7 @@ class Game {
     size_t m_score_to_boss_base {1000};
     float m_score_to_boss_mult {1.5f};
     size_t m_frameCount {0};
-    float m_shape_rotation {5.f};
+    float m_shape_rotation {1.6f};
     void test_config(Config & config) const;
     Config parse_tokens(const std::vector<std::string> & tokenstream) const;
     const Config read_file(const std::string & configfile) const;
@@ -58,15 +58,16 @@ public:
     void spawn_player();
     void spawn_enemy();
     void spawn_boss();  
-    void setup_random_enemy(Entity & enemy, const sf::FloatRect & spawn_bounds);
-    void setup_boss(Entity & enemy, const sf::FloatRect & spawn_bounds);
+    void setup_random_enemy(Entity & enemy, const bool isBoss, const sf::FloatRect & spawn_bounds);
     void setup_player(Entity & player, const Vec2 & position);
     void test_spawn();
     void shoot();
     void shootSpecialWeapon();
     void spawnSmallEntities(const Vec2 & position, const CDeathSpawner & spawner);
     void spawnPickup(const Vec2 & position, const CPickupSpawner & spawner);
-
+    const std::shared_ptr<Entity> spawn_bullet(const Vec2 & position, const float rotation, const Vec2 & velocity, const CShape & bullet_prefab, const float collision_radius, const int lifespan);
+    const std::shared_ptr<Entity> spawn_special_bullet(const Vec2 & position, const float rotation, const CShape & bullet_prefab, const float collision_radius, const int lifespan);
+    
     // Hits and death:
     void on_entity_hit(Entity & entity);
     void on_entity_death(Entity & entity);
