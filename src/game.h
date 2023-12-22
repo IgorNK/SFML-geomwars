@@ -22,6 +22,7 @@ class Game {
     int m_enemy_spawn_countdown {50};
     int m_player_spawn_countdown {100};
     int m_player_spawn_interval {100};
+    int m_sequence_spawn_delay {10};
     size_t m_score {0};
     size_t m_score_to_boss {1000};
     size_t m_score_to_boss_base {1000};
@@ -33,9 +34,13 @@ class Game {
     const Config read_file(const std::string & configfile) const;
     void export_config(Config & config, const std::string & filename) const;
     const bool collides(const CTransform & transform_a, const CTransform & transform_b, const CCollider & collider_a, const CCollider & collider_b) const;
+    const bool line_intersect(const CTransform & t_line, const CTransform & t_obj, const CLine & line, const CCollider & collider) const;
     const Vec2 bounce_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
     const Vec2 limit_movement(const CVelocity & velocity, const CRect & bounds, const CTransform & transform, const CCollider & collider) const;
 
+    int m_game_close_timeout {1000};
+    int m_game_close_countdown {0};
+    bool m_tutorial_spawned {false};
     bool m_running {true};
     bool m_paused {false};
     bool m_sMovement {true};
@@ -60,7 +65,8 @@ public:
     void spawn_boss();  
     void setup_random_enemy(Entity & enemy, const bool isBoss, const sf::FloatRect & spawn_bounds);
     void setup_player(Entity & player, const Vec2 & position);
-    void test_spawn();
+    void spawn_tutorial_messages();
+    void spawn_text_enemies(const std::string & text, const Vec2 & position, const int delay);
     void shoot();
     void shootSpecialWeapon();
     void spawnSmallEntities(const Vec2 & position, const CDeathSpawner & spawner);
@@ -81,6 +87,7 @@ public:
     void sLifespan(const sf::Time & deltaTime);
     void sDamageReact(const sf::Time & deltaTime);
     void sEffects(const sf::Time & deltaTime);
+    void sEmitters(const sf::Time & deltaTime);
     void sTimers(const sf::Time & deltaTime);
     void sUserInput();
     void sInputHandling();

@@ -18,6 +18,26 @@ const std::shared_ptr<Entity> EntityManager::add_entity(const Tag tag) {
     return entity;
 }
 
+const std::shared_ptr<Entity> EntityManager::schedule(const Tag tag) {
+    const std::shared_ptr<Entity> entity = std::shared_ptr<Entity>(new Entity(tag, m_entity_count++));
+    m_scheduled.push_back(entity);
+    return entity;
+}
+
+const bool EntityManager::pop_schedule() {
+    if (m_scheduled.empty()) {
+        return false;
+    }
+    const std::shared_ptr<Entity> entity = m_scheduled.pop_back();
+    m_to_add.push_back(entity);
+
+    if (m_scheduled.empty()) {
+        return false;
+    }
+
+    return true;
+}
+
 void EntityManager::update() {
     for (auto const entity : m_to_add) {
         m_entities.push_back(entity);

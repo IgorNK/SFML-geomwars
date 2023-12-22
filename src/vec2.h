@@ -16,6 +16,7 @@ public:
     Vec2 clone() const;
     float length() const;
     float distance_to(const Vec2 & other) const;
+    float distance_to_line_sq(const Vec2 & start, const Vec2 & end, const Vec2 & point) const;
     float angle_to_rad(const Vec2 & other) const;
     float angle_to_deg(const Vec2 & other) const;
     Vec2 & rotate_rad(const float radians);

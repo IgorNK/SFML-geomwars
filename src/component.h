@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include "tag.h"
@@ -13,6 +14,7 @@ enum ComponentType {
     Orbit,
     Collider,
     Shape,
+    Line,
     Text,
     Lifespan,
     Invincibility,
@@ -27,14 +29,17 @@ enum ComponentType {
     PickupSpawner,
     ScoreReward,
     WeaponPickup
+    Emitter,
 };
 
 static std::map<ComponentType, std::string> component_names {
     {ComponentType::Transform, "Transform"},
     {ComponentType::Velocity, "Velocity"},
     {ComponentType::Orbit, "Orbit"},
+    {ComponentType::Emitter, "Emitter"},
     {ComponentType::Collider, "Collider"},
     {ComponentType::Shape, "Shape"},
+    {ComponentType::Line, "Line"},
     {ComponentType::Text, "Text"},
     {ComponentType::Lifespan, "Lifespan"},
     {ComponentType::Invincibility, "Invincibility"},
@@ -48,15 +53,18 @@ static std::map<ComponentType, std::string> component_names {
     {ComponentType::DeathSpawner, "DeathSpawner"},
     {ComponentType::PickupSpawner, "PickupSpawner"},
     {ComponentType::ScoreReward, "ScoreReward"},
-    {ComponentType::WeaponPickup, "WeaponPickup"}
+    {ComponentType::WeaponPickup, "WeaponPickup"},
+    
 };
 
 static std::map<std::string, ComponentType> name_components {
     {"Transform", ComponentType::Transform},
     {"Velocity", ComponentType::Velocity},
     {"Orbit", ComponentType::Orbit},
+    {"Emitter", ComponentType::Emitter},
     {"Collider", ComponentType::Collider},
     {"Shape", ComponentType::Shape},
+    {"Line", ComponentType::Line},
     {"Text", ComponentType::Text},
     {"Lifespan", ComponentType::Lifespan},
     {"Invincibility", ComponentType::Invincibility},
@@ -70,7 +78,8 @@ static std::map<std::string, ComponentType> name_components {
     {"DeathSpawner", ComponentType::DeathSpawner},
     {"PickupSpawner", ComponentType::PickupSpawner},
     {"ScoreReward", ComponentType::ScoreReward},
-    {"WeaponPickup", ComponentType::WeaponPickup}
+    {"WeaponPickup", ComponentType::WeaponPickup},
+    
 };
 
 class Component {
@@ -115,21 +124,57 @@ public:
 
 class COrbit : public Component {
 public:
-    const CTransform & target;
+    const CTransform & parent;
     float angle;
     float radius;
     float speed;
     COrbit(
-        const CTransform & in_target, 
+        const CTransform & in_parent, 
         const float in_radius, 
         const float in_speed
     ) 
-        : target(in_target)
+        : parent(in_parent)
         , angle(0.f)
         , radius(in_radius)
         , speed(in_speed) 
     {}
     ~COrbit() {}
+};
+
+class CEmitter : public Component {
+public:
+    const CTransform & parent;
+    const std::vector<CShape> particles;
+    const Vec2 offset;
+    const float angle;
+    const float speed;
+    const int freq;
+    int countdown;
+    const int quantity;
+    const int lifespan;
+    const float scale_mult;
+    CEmitter(
+        const CTransform & in_parent,
+        const std::vector<CShape> & particle_prefabs,
+        const Vec2 & in_offset,
+        const float spread_angle,
+        const float in_speed,
+        const int emit_freq,
+        const int in_quantity,
+        const int in_lifespan,
+        const float random_scale_mult
+    )
+        : parent(in_parent)
+        , particles(particle_prefabs)
+        , offset(in_offset)
+        , speed(in_speed)
+        , angle(spread_angle)
+        , freq(emit_freq)
+        , quantity(in_quantity)
+        , lifespan(in_lifespan)
+        , scale_mult(random_scale_mult)
+    { }
+    ~CEmitter() { };
 };
 
 class CCollider : public Component {
@@ -199,6 +244,34 @@ public:
     ~CShape() { }
 };
 
+class CLine: public Component {
+public:
+    const CTransform & parent;
+    sf::RectangleShape shape;
+    const Vec2 start;
+    const Vec2 end;
+    CLine(
+        const CTransform & in_parent_transform
+        , const Vec2 & in_start = Vec2(0, 0)
+        , const Vec2 & in_end = Vec2(1, 0)
+        , const float thickness = 1.f
+        , const sf::Color & fill_color = sf::Color(0, 0, 255)
+        , const sf::Color & outline_color = sf::Color(0, 0, 255)        
+        , const float outline_thickness = 1.f
+    )
+        : parent(in_parent_transform)
+        , start(in_start)
+        , end(in_end)
+        , shape(sf::RectangleShape(in_start.distance_to(in_end), thickness))
+    {
+        shape.setFillColor(fill_color);
+        shape.setOutlineColor(outline_color);
+        shape.setOutlineThickness(outline_thickness);
+        shape.setOrigin(0, thickness / 2);
+        shape.setRotation(start.angle_to_deg(end));
+    }
+}
+
 class CText : public Component {
 public:
     sf::Text text;
@@ -224,7 +297,7 @@ public:
         ShotLaser
     };    
     float speed {10.f};
-    float lifespan {50.f};
+    int lifespan {50};
     int fire_countdown {10};
     int fire_delay {10};
     int power {0};
@@ -232,7 +305,7 @@ public:
     CWeapon::FireMode mode {CWeapon::FireMode::ShotSingle};
     CWeapon(
         const float bullet_speed
-        , const float in_lifespan
+        , const int in_lifespan
         , const int in_delay
         , const CWeapon::FireMode fire_mode
         , const CShape bullet_prototype
@@ -255,8 +328,8 @@ public:
         SpecialFlamethrower,
     };
     CSpecialWeapon::FireMode mode;
-    float speed;
-    float lifespan;
+    float speed {10.f};
+    int lifespan;
     int fire_countdown {10};
     int fire_delay {10};
     int power {0};
@@ -265,8 +338,8 @@ public:
     CShape bullet;
     CSpecialWeapon(
         const float bullet_speed = 10.f
-        , const float in_lifespan = 50.f
-        , const int in_delay = 100.f
+        , const int in_lifespan = 50
+        , const int in_delay = 100
         , const int in_amount = 6
         , const int in_recursion = 2
         , const CShape bullet_prototype = CShape(5.f, 12, sf::Color(0, 0, 255), sf::Color(0, 0, 0), 0.f)

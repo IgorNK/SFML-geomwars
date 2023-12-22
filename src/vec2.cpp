@@ -12,6 +12,24 @@ float Vec2::distance_to(const Vec2 & other) const {
     return sqrtf((other.x - x) * (other.x - x) + (other.y - y) * (other.y - y));
 };
 
+float Vec2::distance_to_line_sq(const Vec2 & start, const Vec2 & end, const Vec2 & point) const {
+    // line:
+    // A = y2 - y1
+    // B = x1 - x2
+    // C = y1 * (x2 - x1) - x1 * (y2 - y1)
+    // Ax + By + C = 0
+
+    // Squared Distance from point to line:
+    // d^2 = (A*x + B*y + C)^2 / A^2 + B^2
+    
+    const float A = end.y - start.y;
+    const float B = start.x - end.x;
+    const float C = start.y * (end.x - start.x) - start.x * (end.y - start.y);
+    const float top = (A * point.x + B * point.y + C);
+    const float bottom = A * A + B * B;
+    return (top * top) / bottom; 
+}
+
 float Vec2::angle_to_rad(const Vec2 & other) const {
 //Angle to another Vec2 position, radian version
     const float dot = x * other.x + y * other.y;
