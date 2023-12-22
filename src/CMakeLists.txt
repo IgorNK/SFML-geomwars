@@ -2,6 +2,7 @@
 file(GLOB_RECURSE sources *.cpp)
 file(GLOB_RECURSE data resources/*)
 add_executable(sfmlgame ${sources})
+target_compile_features(sfmlgame PUBLIC cxx_std_23) # or PUBLIC if you use C++14 in headers.
 file(COPY ${data} DESTINATION resources)
 target_link_libraries(sfmlgame PRIVATE sfml-graphics sfml-system sfml-window ImGui-SFML::ImGui-SFML)
 # Copy DLLs needed for runtime on Windows
