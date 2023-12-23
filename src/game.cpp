@@ -140,8 +140,8 @@ void Game::spawn_tutorial_messages() {
        m_entity_manager.get_entities(Tag::WorldBounds)) {
     const sf::FloatRect w_bounds = wb->rect->rect;
     const int font_size = 48;
-    const int spacing = -4;
-    const int v_spacing = 40;
+    const int spacing = 4;
+    const int v_spacing = 160;
     const sf::Color font_color = sf::Color(255, 160, 50);
     std::string msg_a = "WASD MOVE";
     std::string msg_b = "LMB SHOOT";
@@ -152,11 +152,11 @@ void Game::spawn_tutorial_messages() {
     const int width_a = msg_a.size() * font_size + spacing;
     const int width_b = msg_b.size() * font_size + spacing;
     const int width_c = msg_c.size() * font_size + spacing;
-    const int left_a = (w_bounds.width - width_a) / 2;
+    const int left_a = w_bounds.left + w_bounds.width - width_a;
     const int left_b = (w_bounds.width - width_b) / 2;
     const int left_c = (w_bounds.width - width_c) / 2;
-    const int top_a = w_bounds.top + v_spacing;
-    const int top_c = w_bounds.top + w_bounds.height - v_spacing;
+    const int top_a = (w_bounds.top + w_bounds.height / 2) - v_spacing;
+    const int top_c = (w_bounds.top + w_bounds.height / 2) + v_spacing * 2;
     const int top_b = top_c - v_spacing;
     spawn_text_enemies(msg_c, Vec2(left_c, top_c), font_size, font_color,
                        spacing);
@@ -172,15 +172,19 @@ void Game::spawn_text_enemies(const std::string &text, const Vec2 &position,
                               const int spacing) {
   Vec2 pos = position;
   for (auto &ch : text) {
+    const CText text_shape = CText(std::string(1, ch), m_font, font_size, font_color);
+    const float width = text_shape.text.getLocalBounds().width;
     const std::shared_ptr<Entity> enemy =
         m_entity_manager.schedule(Tag::Enemies);
     enemy->name = std::make_shared<CName>(CName("Text enemy"));
     enemy->transform = std::make_shared<CTransform>(CTransform(pos));
-    enemy->text = std::make_shared<CText>(
-        CText(std::string(1, ch), m_font, font_size, font_color));
+    enemy->text = std::make_shared<CText>(text_shape);
+    enemy->collider = std::make_shared<CCollider>(CCollider(width * 2));
+    enemy->bounce = std::make_shared<CBounce>(CBounce());
     enemy->health = std::make_shared<CHealth>(CHealth(1));
     enemy->score_reward = std::make_shared<CScoreReward>(CScoreReward(200));
-    pos.x += spacing * 5;
+    enemy->lifespan = std::make_shared<CLifespan>(CLifespan(300));
+    pos.x -= width + spacing * 5;
   }
 }
 
@@ -232,11 +236,14 @@ void Game::on_pickup(const CWeaponPickup::PickupType type) {
     if (!player->weapon || !player->special_weapon) {
       return;
     }
+    const int primary_power = player->weapon->power;
+    const int secondary_power = player->special_weapon->power;
+    const int max_power = read_config_i("Global", "maxPower");
     switch (type) {
     case CWeaponPickup::PickupType::ShotSingle: {
       std::cout << "Red Single!\n";
       if (player->weapon->mode == CWeapon::FireMode::ShotSingle) {
-        if (player->weapon->power < read_config_i("Global", "maxPower") - 1) {
+        if (primary_power < max_power && secondary_power < max_power) {
           ++player->weapon->power;
           ++player->special_weapon->power;
         } else {
@@ -253,8 +260,12 @@ void Game::on_pickup(const CWeaponPickup::PickupType type) {
     case CWeaponPickup::PickupType::ShotSpread: {
       std::cout << "Green Spread!\n";
       if (player->weapon->mode == CWeapon::FireMode::ShotSpread) {
-        ++player->weapon->power;
-        ++player->special_weapon->power;
+        if (primary_power < max_power && secondary_power < max_power) {
+          ++player->weapon->power;
+          ++player->special_weapon->power;
+        } else {
+          m_score += 500;
+        }
       } else {
         player->weapon->power = 0;
         player->weapon->mode = CWeapon::FireMode::ShotSpread;
@@ -264,8 +275,12 @@ void Game::on_pickup(const CWeaponPickup::PickupType type) {
     }
     case CWeaponPickup::PickupType::ShotLaser: {
       if (player->weapon->mode == CWeapon::FireMode::ShotLaser) {
-        ++player->weapon->power;
-        ++player->special_weapon->power;
+        if (primary_power < max_power && secondary_power < max_power) {
+          ++player->weapon->power;
+          ++player->special_weapon->power;
+        } else {
+          m_score += 500;
+        }
       } else {
         player->weapon->power = 0;
         player->weapon->mode = CWeapon::FireMode::ShotLaser;

@@ -34,6 +34,7 @@ class Entity {
 public:
 	std::shared_ptr<CTransform> transform;
 	std::shared_ptr<CVelocity> velocity;
+	std::shared_ptr<CBounce> bounce;
 	std::shared_ptr<COrbit> orbit;
 	std::shared_ptr<CEmitter> emitter;
 	std::shared_ptr<CCollider> collider;

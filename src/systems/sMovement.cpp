@@ -11,6 +11,20 @@ void Game::sMovement(const sf::Time &deltaTime) {
               bounce_movement(*enemy->velocity.get(), *wb->rect.get(),
                               *enemy->transform.get(), *enemy->collider.get());
         }
+        if (enemy->bounce && enemy->transform) {
+          CBounce & bounce = *enemy->bounce.get();
+          Vec2 & pos = enemy->transform->position;
+          if (bounce.direction) {
+            pos = Vec2::lerp(pos, pos + Vec2(0, bounce.amplitude), (float)bounce.countdown / bounce.frequency);
+          } else {
+            pos = Vec2::lerp(pos, pos - Vec2(0, bounce.amplitude), (float)bounce.countdown / bounce.frequency);
+          }
+          if (bounce.countdown <= 0) {
+            bounce.direction = !bounce.direction;
+            bounce.countdown = bounce.frequency;
+          }
+          --bounce.countdown;
+        }
       }
     }
   }

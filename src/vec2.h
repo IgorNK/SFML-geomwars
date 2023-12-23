@@ -33,6 +33,12 @@ public:
 		const float bottom = A * A + B * B;
 		return (top * top) / bottom; 
 	};
+	static inline float lerp(float a, float b, float t) {
+		return a + (b - a) * t;
+	}
+	static inline Vec2 lerp(Vec2 a, Vec2 b, float t) {
+		return a + (b - a) * t;
+	}
 	float angle_to_rad(const Vec2 & other) const;
 	float angle_to_deg(const Vec2 & other) const;
 	Vec2 & rotate_rad(const float radians);

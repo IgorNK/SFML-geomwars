@@ -101,7 +101,7 @@ void Game::shoot() {
           const int outlineRed = read_config_i(configHeader, "outlineRed");
           const int outlineGreen = read_config_i(configHeader, "outlineGreen");
           const int outlineBlue = read_config_i(configHeader, "outlineBlue");
-          const int outlineAlpha = read_config_i(configHeader, "fillAlpha");
+          const int outlineAlpha = read_config_i(configHeader, "outlineAlpha");
           const int outlineThickness =
               read_config_i(configHeader, "outlineThickness");
 

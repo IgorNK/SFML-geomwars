@@ -24,6 +24,14 @@ void Game::sLifespan(const sf::Time &deltaTime) {
         shape.setFillColor(sf::Color(color.r, color.g, color.b, rate));
         shape.setOutlineColor(sf::Color(outline.r, outline.g, outline.b, rate));
       }
+      if (entity->text) {
+        const float rate = (float)countdown / (float)duration * 255;
+        sf::Text &shape = entity->text->text;
+        const sf::Color color = shape.getFillColor();
+        const sf::Color outline = shape.getOutlineColor();
+        shape.setFillColor(sf::Color(color.r, color.g, color.b, rate));
+        shape.setOutlineColor(sf::Color(outline.r, outline.g, outline.b, rate));
+      }
     }
   }
 }

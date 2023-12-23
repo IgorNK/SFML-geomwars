@@ -11,6 +11,7 @@
 enum ComponentType {
 	Transform,
 	Velocity,
+	Bounce,
 	Orbit,
 	Collider,
 	Shape,
@@ -35,6 +36,7 @@ enum ComponentType {
 static std::map<ComponentType, std::string> component_names {
 	{ComponentType::Transform, "Transform"},
 	{ComponentType::Velocity, "Velocity"},
+	{ComponentType::Bounce, "Bounce"},
 	{ComponentType::Orbit, "Orbit"},
 	{ComponentType::Emitter, "Emitter"},
 	{ComponentType::Collider, "Collider"},
@@ -60,6 +62,7 @@ static std::map<ComponentType, std::string> component_names {
 static std::map<std::string, ComponentType> name_components {
 	{"Transform", ComponentType::Transform},
 	{"Velocity", ComponentType::Velocity},
+	{"Bounce", ComponentType::Bounce},
 	{"Orbit", ComponentType::Orbit},
 	{"Emitter", ComponentType::Emitter},
 	{"Collider", ComponentType::Collider},
@@ -120,6 +123,16 @@ public:
 	CVelocity() { }
 	CVelocity(const Vec2 vel) : velocity(vel) { }
 	~CVelocity() { }
+};
+
+class CBounce : public Component {
+public:
+	float amplitude {1.5f};
+	bool direction {0};
+	int frequency {70};
+	int countdown {70};
+	CBounce() {};
+	~CBounce() {};
 };
 
 class COrbit : public Component {

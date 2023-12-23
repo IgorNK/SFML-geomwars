@@ -12,8 +12,16 @@ void Game::sGUI() {
   }
 
   ImGui::Begin("Geometry Wars");
+  const int msg_timeout = 100;
+  static int saved_timeout = 0;
   if (ImGui::Button("Save")) {
     export_config(m_config, m_userconfig_file);
+    saved_timeout = msg_timeout;
+  }
+  if (saved_timeout > 0) {
+    --saved_timeout;
+    ImGui::SameLine();
+    ImGui::TextColored({0.f, 1.f, 0.f, (float)saved_timeout / msg_timeout}, "Configuration saved");
   }
   static std::vector<Vec2> vectors{};
 
@@ -464,7 +472,7 @@ void Game::sGUI() {
               read_config_i(configHeader, "outlineRed"),
               read_config_i(configHeader, "outlineGreen"),
               read_config_i(configHeader, "outlineBlue"),
-              read_config_i(configHeader, "fillAlpha")
+              read_config_i(configHeader, "outlineAlpha")
             };
             int outlineThickness =
                 read_config_i(configHeader, "outlineThickness");
@@ -654,7 +662,7 @@ void Game::sGUI() {
               write_config(configHeader, "fillGreen", std::to_string(fillColor[1]));
               write_config(configHeader, "fillBlue", std::to_string(fillColor[2]));
             }
-            if (ImGui::InputInt3("Outline Color", fillColor)) {
+            if (ImGui::InputInt3("Outline Color", outlineColor)) {
               write_config(configHeader, "outlineRed", std::to_string(outlineColor[0]));
               write_config(configHeader, "outlineGreen", std::to_string(outlineColor[1]));
               write_config(configHeader, "outlineBlue", std::to_string(outlineColor[2]));
@@ -751,7 +759,7 @@ void Game::sGUI() {
               write_config(configHeader, "alphaMin", std::to_string(alpha[0]));
               write_config(configHeader, "alphaMax", std::to_string(alpha[1]));
             }
-            if (ImGui::DragFloatRange2("Radius", &radius[0], &radius[1], 0.0f, 10.0f)) {
+            if (ImGui::DragFloatRange2("Radius", &radius[0], &radius[1], 1.f, 0.0f, 10.0f)) {
               write_config(configHeader, "radiusMin", std::to_string(radius[0]));
               write_config(configHeader, "radiusMax", std::to_string(radius[1]));
             }
@@ -797,10 +805,14 @@ void Game::sGUI() {
         static int res_idx = 0;
         static int refresh_idx = 0;
         static bool fullscreen = current_fullscreen;
-        // auto iterator = find(resolutions.begin(), resolutions.end(), current_res);
-        // if (iterator != resolutions.end()) {
-        //   res_idx = iterator - resolutions.begin();
-        // }
+        const std::string current_res = 
+          read_config_s("Window", "width") + "x" +
+          read_config_s("Window", "height") + " (" +
+          read_config_s("Window", "depth") + ")";
+        auto iterator = find(resolutions.begin(), resolutions.end(), current_res);
+        if (iterator != resolutions.end()) {
+          res_idx = iterator - resolutions.begin();
+        }
         ImGui::Text("Resolution");
         if (ImGui::BeginCombo("##res_select", resolutions[res_idx].c_str())) {
           for (int i = 0; i < resolutions.size(); ++i) {
