@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sEnemySpawner(const sf::Time &deltaTime) {
   if (m_frameCount % m_sequence_spawn_delay == 0) {

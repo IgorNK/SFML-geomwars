@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sCollision() {
   for (const std::shared_ptr<Entity> enemy :

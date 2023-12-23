@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sMovement(const sf::Time &deltaTime) {
   for (const std::shared_ptr<Entity> wb :

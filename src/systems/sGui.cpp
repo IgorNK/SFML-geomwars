@@ -1,4 +1,5 @@
-#include "game.h"
+#include "../game.h"
+#include <set>
 
 void Game::sGUI() {
   // Interface stuff
@@ -11,6 +12,9 @@ void Game::sGUI() {
   }
 
   ImGui::Begin("Geometry Wars");
+  if (ImGui::Button("Save")) {
+    export_config(m_config, m_userconfig_file);
+  }
   static std::vector<Vec2> vectors{};
 
   ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_Reorderable;
@@ -341,7 +345,7 @@ void Game::sGUI() {
             if (ImGui::InputInt("Lifespan", &lifespan, 1, 10)) {
               write_config(configHeader, "lifespan", std::to_string(lifespan));
             };
-            if (ImGui::InputFloat2("Collision/Shape", radius)) {
+            if (ImGui::InputFloat2("Collision/Radius", radius)) {
               write_config(configHeader, "collisionRadius",
                            std::to_string(radius[0]));
               write_config(configHeader, "shapeRadius",
@@ -378,47 +382,124 @@ void Game::sGUI() {
           case CWeapon::FireMode::ShotSpread: {
             const std::string configHeader =
                 "ShotSpread" + std::to_string(primary_power);
-            const float speed = read_config_f(configHeader, "speed");
-            const float spread = read_config_f(configHeader, "spread");
-            const int amount = read_config_i(configHeader, "amount");
-            const int fireRate = read_config_i(configHeader, "fireRate");
-            const int lifespan = read_config_i(configHeader, "lifespan");
-            const float collisionRadius =
-                read_config_f(configHeader, "collisionRadius");
-            const float shapeRadius =
-                read_config_f(configHeader, "shapeRadius");
-            const int fillRed = read_config_i(configHeader, "fillRed");
-            const int fillGreen = read_config_i(configHeader, "fillGreen");
-            const int fillBlue = read_config_i(configHeader, "fillBlue");
-            const int outlineRed = read_config_i(configHeader, "outlineRed");
-            const int outlineGreen =
-                read_config_i(configHeader, "outlineGreen");
-            const int outlineBlue = read_config_i(configHeader, "outlineBlue");
-            const int outlineThickness =
+            float speed = read_config_f(configHeader, "speed");
+            float spread = read_config_f(configHeader, "spread");
+            int amount = read_config_i(configHeader, "amount");
+            int fireRate = read_config_i(configHeader, "fireRate");
+            int lifespan = read_config_i(configHeader, "lifespan");
+            float radius[2] = {
+              read_config_f(configHeader, "collisionRadius"),
+              read_config_f(configHeader, "shapeRadius")
+            };
+            int fillColor[3] = {
+              read_config_i(configHeader, "fillRed"),
+              read_config_i(configHeader, "fillGreen"),
+              read_config_i(configHeader, "fillBlue")
+            };
+            int outlineColor[3] = {
+              read_config_i(configHeader, "outlineRed"),
+              read_config_i(configHeader, "outlineGreen"),
+              read_config_i(configHeader, "outlineBlue")
+            };
+            int outlineThickness =
                 read_config_i(configHeader, "outlineThickness");
-            const int vertices = read_config_i(configHeader, "vertices");
-            const int health = read_config_i(configHeader, "health");
+            int vertices = read_config_i(configHeader, "vertices");
+            int health = read_config_i(configHeader, "health");            
+            
+            if (ImGui::InputFloat("Speed", &speed, 0.1f, 1.f)) {
+              write_config(configHeader, "speed", std::to_string(speed));
+            }
+            if (ImGui::InputFloat("Spread", &spread, 0.1f, 1.f)) {
+              write_config(configHeader, "spread", std::to_string(spread));
+            }
+            if (ImGui::InputInt("Amount", &amount, 1, 1)) {
+              write_config(configHeader, "amount", std::to_string(amount));
+            }
+            if (ImGui::InputInt("Fire Rate", &fireRate, 1, 1)) {
+              write_config(configHeader, "fireRate", std::to_string(fireRate));
+            }
+            if (ImGui::InputInt("Lifespan", &lifespan, 1, 1)) {
+              write_config(configHeader, "lifespan", std::to_string(lifespan));
+            }
+            if (ImGui::InputFloat2("Collision/Radius", radius)) {
+              write_config(configHeader, "collisionRadius", std::to_string(radius[0]));
+              write_config(configHeader, "shapeRadius", std::to_string(radius[1]));
+            }
+            if (ImGui::InputInt3("Fill Color", fillColor)) {
+              write_config(configHeader, "fillRed", std::to_string(fillColor[0]));
+              write_config(configHeader, "fillGreen", std::to_string(fillColor[1]));
+              write_config(configHeader, "fillBlue", std::to_string(fillColor[2]));
+            }
+            if (ImGui::InputInt3("Outline Color", fillColor)) {
+              write_config(configHeader, "outlineRed", std::to_string(outlineColor[0]));
+              write_config(configHeader, "outlineGreen", std::to_string(outlineColor[1]));
+              write_config(configHeader, "outlineBlue", std::to_string(outlineColor[2]));
+            }
+            if (ImGui::InputInt("Outline Thickness", &outlineThickness, 1, 1)) {
+              write_config(configHeader, "outlineThickness", std::to_string(outlineThickness));
+            }
+            if (ImGui::InputInt("Vertices", &vertices, 1, 1)) {
+              write_config(configHeader, "vertices", std::to_string(vertices));
+            }
+            if (ImGui::InputInt("Health", &health, 1, 1)) {
+              write_config(configHeader, "health", std::to_string(health));
+            }
             break;
           }
           case CWeapon::FireMode::ShotLaser: {
             const std::string configHeader =
                 "ShotLaser" + std::to_string(primary_power);
-            const int fireRate = read_config_i(configHeader, "fireRate");
-            const int lifespan = read_config_i(configHeader, "lifespan");
-            const float offset = read_config_f(configHeader, "offset");
-            const float length = read_config_f(configHeader, "length");
-            const float thickness = read_config_f(configHeader, "thickness");
-            const int fillRed = read_config_i(configHeader, "fillRed");
-            const int fillGreen = read_config_i(configHeader, "fillGreen");
-            const int fillBlue = read_config_i(configHeader, "fillBlue");
-            const int fillAlpha = read_config_i(configHeader, "fillAlpha");
-            const int outlineRed = read_config_i(configHeader, "outlineRed");
-            const int outlineGreen =
-                read_config_i(configHeader, "outlineGreen");
-            const int outlineBlue = read_config_i(configHeader, "outlineBlue");
-            const int outlineAlpha = read_config_i(configHeader, "fillAlpha");
-            const int outlineThickness =
+            int fireRate = read_config_i(configHeader, "fireRate");
+            int lifespan = read_config_i(configHeader, "lifespan");
+            float offset = read_config_f(configHeader, "offset");
+            float length = read_config_f(configHeader, "length");
+            float thickness = read_config_f(configHeader, "thickness");
+            int fillColor[4] = {
+              read_config_i(configHeader, "fillRed"),
+              read_config_i(configHeader, "fillGreen"),
+              read_config_i(configHeader, "fillBlue"),
+              read_config_i(configHeader, "fillAlpha")
+            };
+            int outlineColor[4] {
+              read_config_i(configHeader, "outlineRed"),
+              read_config_i(configHeader, "outlineGreen"),
+              read_config_i(configHeader, "outlineBlue"),
+              read_config_i(configHeader, "fillAlpha")
+            };
+            int outlineThickness =
                 read_config_i(configHeader, "outlineThickness");
+            
+            if (ImGui::InputInt("Fire Rate", &fireRate, 1, 10)) {
+              write_config(configHeader, "fireRate", std::to_string(fireRate));
+            }
+            if (ImGui::InputInt("Lifespan", &lifespan, 1, 10)) {
+              write_config(configHeader, "lifespan", std::to_string(lifespan));
+            }
+            if (ImGui::InputFloat("Offset", &offset, 1.f , 10.f)) {
+              write_config(configHeader, "offset", std::to_string(offset));
+            }
+            if (ImGui::InputFloat("Length", &length, 1.f , 10.f)) {
+              write_config(configHeader, "length", std::to_string(length));
+            }
+            if (ImGui::InputFloat("Thickness", &thickness, 1.f , 10.f)) {
+              write_config(configHeader, "thickness", std::to_string(thickness));
+            }
+            if (ImGui::InputInt4("Fill Color", fillColor)) {
+              write_config(configHeader, "fillRed", std::to_string(fillColor[0]));
+              write_config(configHeader, "fillGreen", std::to_string(fillColor[1]));
+              write_config(configHeader, "fillBlue", std::to_string(fillColor[2]));
+              write_config(configHeader, "fillAlpha", std::to_string(fillColor[3]));
+            }
+            if (ImGui::InputInt4("Outline Color", outlineColor)) {
+              write_config(configHeader, "outlineRed", std::to_string(outlineColor[0]));
+              write_config(configHeader, "outlineGreen", std::to_string(outlineColor[1]));
+              write_config(configHeader, "outlineBlue", std::to_string(outlineColor[2]));
+              write_config(configHeader, "outlineAlpha", std::to_string(outlineColor[3]));
+            }
+            if (ImGui::InputInt("Outline Thickness", &outlineThickness, 1, 1)) {
+              write_config(configHeader, "outlineThickness", std::to_string(outlineThickness));
+            }
+            
             break;
           }
           }
@@ -454,87 +535,234 @@ void Game::sGUI() {
           ImGui::RadioButton("P4", &secondary_power, 4);
           switch (secondary_mode) {
           case CSpecialWeapon::FireMode::SpecialExplosion: {
-            const std::string configHeader =
+           const std::string configHeader =
                 "SpecialExplosion" + std::to_string(secondary_power);
-            const int fireRate = read_config_i(configHeader, "fireRate");
-            const int lifespan = read_config_i(configHeader, "lifespan");
-            const int smallLifespan =
+           int fireRate = read_config_i(configHeader, "fireRate");
+           int lifespan = read_config_i(configHeader, "lifespan");
+           int smallLifespan =
                 read_config_i(configHeader, "smallLifespan");
-            const int speed = read_config_i(configHeader, "speed");
-            const int smallSpeed = read_config_i(configHeader, "smallSpeed");
-            const int smallAmount = read_config_i(configHeader, "smallAmount");
-            const float collisionRadius =
-                read_config_f(configHeader, "collisionRadius");
-            const float shapeRadius =
-                read_config_f(configHeader, "shapeRadius");
-            const int fillRed = read_config_i(configHeader, "fillRed");
-            const int fillGreen = read_config_i(configHeader, "fillGreen");
-            const int fillBlue = read_config_i(configHeader, "fillBlue");
-            const int outlineRed = read_config_i(configHeader, "outlineRed");
-            const int outlineGreen =
-                read_config_i(configHeader, "outlineGreen");
-            const int outlineBlue = read_config_i(configHeader, "outlineBlue");
-            const int outlineThickness =
+           int speed = read_config_i(configHeader, "speed");
+           int smallSpeed = read_config_i(configHeader, "smallSpeed");
+           int smallAmount = read_config_i(configHeader, "smallAmount");
+           float radius[2] = {
+            read_config_f(configHeader, "collisionRadius"),
+            read_config_f(configHeader, "shapeRadius")
+           };
+           int fillColor[3] = {
+            read_config_i(configHeader, "fillRed"),
+            read_config_i(configHeader, "fillGreen"),
+            read_config_i(configHeader, "fillBlue")
+           };
+           int outlineColor[3] = {
+            read_config_i(configHeader, "outlineRed"),
+            read_config_i(configHeader, "outlineGreen"),
+            read_config_i(configHeader, "outlineBlue")
+           };
+           int outlineThickness =
                 read_config_i(configHeader, "outlineThickness");
-            const int vertices = read_config_i(configHeader, "vertices");
-            const int health = read_config_i(configHeader, "health");
-            const int recursion = read_config_i(configHeader, "recursion");
+           int vertices = read_config_i(configHeader, "vertices");
+           int health = read_config_i(configHeader, "health");
+           int recursion = read_config_i(configHeader, "recursion");
+
+           if (ImGui::InputInt("Fire Rate", &fireRate, 1, 10)) {
+            write_config(configHeader, "fireRate", std::to_string(fireRate));
+           }
+           if (ImGui::InputInt("Lifespan", &lifespan, 1, 10)) {
+            write_config(configHeader, "lifespan", std::to_string(lifespan));
+           }
+           if (ImGui::InputInt("Particle Lifespan", &smallLifespan, 1, 10)) {
+            write_config(configHeader, "smallLifespan", std::to_string(smallLifespan));
+           }
+           if (ImGui::InputInt("Speed", &speed, 1, 10)) {
+            write_config(configHeader, "speed", std::to_string(speed));
+           }
+           if (ImGui::InputFloat2("Collision/Radius", radius)) {
+            write_config(configHeader, "collisionRadius", std::to_string(radius[0]));
+            write_config(configHeader, "shapeRadius", std::to_string(radius[1]));
+           }
+           if (ImGui::InputInt3("Fill Color", fillColor)) {
+            write_config(configHeader, "fillRed", std::to_string(fillColor[0]));
+            write_config(configHeader, "fillGreen", std::to_string(fillColor[1]));
+            write_config(configHeader, "fillBlue", std::to_string(fillColor[2]));
+           }
+           if (ImGui::InputInt3("Outline Color", fillColor)) {
+            write_config(configHeader, "outlineRed", std::to_string(outlineColor[0]));
+            write_config(configHeader, "outlineGreen", std::to_string(outlineColor[1]));
+            write_config(configHeader, "outlineBlue", std::to_string(outlineColor[2]));
+           }
+           if (ImGui::InputInt("Outline Thickness", &outlineThickness, 1, 10)) {
+            write_config(configHeader, "outlineThickness", std::to_string(outlineThickness));
+           } 
+           if (ImGui::InputInt("Health", &health, 1, 10)) {
+            write_config(configHeader, "health", std::to_string(health));
+           } 
+           if (ImGui::InputInt("Recursion", &recursion, 1, 10)) {
+            write_config(configHeader, "recursion", std::to_string(recursion));
+           } 
+
             break;
           }
           case CSpecialWeapon::FireMode::SpecialRotor: {
             const std::string configHeader =
                 "SpecialRotor" + std::to_string(secondary_power);
-            const float angularSpeed =
+            float angularSpeed =
                 read_config_f(configHeader, "angularSpeed");
-            const int amount = read_config_i(configHeader, "amount");
-            const float radius = read_config_f(configHeader, "radius");
-            const int fireRate = read_config_i(configHeader, "fireRate");
-            const int lifespan = read_config_i(configHeader, "lifespan");
-            const float collisionRadius =
-                read_config_f(configHeader, "collisionRadius");
-            const float shapeRadius =
-                read_config_f(configHeader, "shapeRadius");
-            const int fillRed = read_config_i(configHeader, "fillRed");
-            const int fillGreen = read_config_i(configHeader, "fillGreen");
-            const int fillBlue = read_config_i(configHeader, "fillBlue");
-            const int outlineRed = read_config_i(configHeader, "outlineRed");
-            const int outlineGreen =
-                read_config_i(configHeader, "outlineGreen");
-            const int outlineBlue = read_config_i(configHeader, "outlineBlue");
-            const int outlineThickness =
+            int amount = read_config_i(configHeader, "amount");
+            float radius = read_config_f(configHeader, "radius");
+            int fireRate = read_config_i(configHeader, "fireRate");
+            int lifespan = read_config_i(configHeader, "lifespan");
+            float shapeRadius[2] = {
+              read_config_f(configHeader, "collisionRadius"),
+              read_config_f(configHeader, "shapeRadius")
+            };
+            int fillColor[3] = {
+              read_config_i(configHeader, "fillRed"),
+              read_config_i(configHeader, "fillGreen"),
+              read_config_i(configHeader, "fillBlue")
+            };
+            int outlineColor[3] = {
+              read_config_i(configHeader, "outlineRed"),
+              read_config_i(configHeader, "outlineGreen"),
+              read_config_i(configHeader, "outlineBlue")
+            };
+            int outlineThickness =
                 read_config_i(configHeader, "outlineThickness");
-            const int vertices = read_config_i(configHeader, "vertices");
-            const int health = read_config_i(configHeader, "health");
+            int vertices = read_config_i(configHeader, "vertices");
+            int health = read_config_i(configHeader, "health");
+
+            if (ImGui::InputFloat("Angular Speed", &angularSpeed, 0.1, 1)) {
+              write_config(configHeader, "angularSpeed", std::to_string(angularSpeed));
+            }
+            if (ImGui::InputInt("Amount", &amount, 1, 1)) {
+              write_config(configHeader, "amount", std::to_string(amount));
+            }
+            if (ImGui::InputFloat("Radius", &radius, 1.f, 10.f)) {
+              write_config(configHeader, "radius", std::to_string(radius));
+            }
+            if (ImGui::InputInt("Fire Rate", &fireRate, 1, 10)) {
+              write_config(configHeader, "fireRate", std::to_string(fireRate));
+            }
+            if (ImGui::InputInt("Lifespan", &lifespan, 1, 10)) {
+              write_config(configHeader, "lifespan", std::to_string(lifespan));
+            }
+            if (ImGui::InputFloat2("Collision/Radius", shapeRadius)) {
+              write_config(configHeader, "collisionRadius", std::to_string(shapeRadius[0]));
+              write_config(configHeader, "shapeRadius", std::to_string(shapeRadius[1]));
+            }
+            if (ImGui::InputInt3("Fill Color", fillColor)) {
+              write_config(configHeader, "fillRed", std::to_string(fillColor[0]));
+              write_config(configHeader, "fillGreen", std::to_string(fillColor[1]));
+              write_config(configHeader, "fillBlue", std::to_string(fillColor[2]));
+            }
+            if (ImGui::InputInt3("Outline Color", fillColor)) {
+              write_config(configHeader, "outlineRed", std::to_string(outlineColor[0]));
+              write_config(configHeader, "outlineGreen", std::to_string(outlineColor[1]));
+              write_config(configHeader, "outlineBlue", std::to_string(outlineColor[2]));
+            }
+            if (ImGui::InputInt("Outline Thickness", &outlineThickness, 1, 1)) {
+              write_config(configHeader, "outlineThickness", std::to_string(outlineThickness));
+            }
+            if (ImGui::InputInt("Vertices", &vertices, 1, 1)) {
+              write_config(configHeader, "vertices", std::to_string(vertices));
+            }
+            if (ImGui::InputInt("Health", &health, 1, 1)) {
+              write_config(configHeader, "health", std::to_string(health));
+            }
+
             break;
           }
           case CSpecialWeapon::FireMode::SpecialFlamethrower: {
             const std::string configHeader =
                 "SpecialFlamethrower" + std::to_string(secondary_power);
-            const float spread = read_config_f(configHeader, "spread");
-            const int speed = read_config_i(configHeader, "speed");
-            const int duration = read_config_i(configHeader, "duration");
-            const int fireRate = read_config_i(configHeader, "fireRate");
-            const float offset = read_config_f(configHeader, "offset");
-            const int freq = read_config_i(configHeader, "freq");
-            const int quantity = read_config_i(configHeader, "quantity");
-            const int smallLifespan =
+            float spread = read_config_f(configHeader, "spread");
+            float nozzleSpread = read_config_f(configHeader, "nozzleSpread");
+            int speed = read_config_i(configHeader, "speed");
+            int duration = read_config_i(configHeader, "duration");
+            int fireRate = read_config_i(configHeader, "fireRate");
+            float offset = read_config_f(configHeader, "offset");
+            int freq = read_config_i(configHeader, "freq");
+            int quantity = read_config_i(configHeader, "quantity");
+            int smallLifespan =
                 read_config_i(configHeader, "smallLifespan");
-            const float randomScale =
+            float randomScale =
                 read_config_f(configHeader, "randomScale");
-            const int fillRedMin = read_config_i(configHeader, "fillRedMin");
-            const int fillRedMax = read_config_i(configHeader, "fillRedMax");
-            const int fillGreenMin =
-                read_config_i(configHeader, "fillGreenMin");
-            const int fillGreenMax =
-                read_config_i(configHeader, "fillGreenMax");
-            const int fillBlue = read_config_i(configHeader, "fillBlue");
-            const int alphaMin = read_config_i(configHeader, "alphaMin");
-            const int alphaMax = read_config_i(configHeader, "alphaMax");
-            const int radiusMin = read_config_i(configHeader, "radiusMin");
-            const int radiusMax = read_config_i(configHeader, "radiusMax");
-            const int vertsMin = read_config_i(configHeader, "vertsMin");
-            const int vertsMax = read_config_i(configHeader, "vertsMax");
-            const int amountTypes = read_config_i(configHeader, "amountTypes");
+            int fillRed[2] = {
+              read_config_i(configHeader, "fillRedMin"),
+              read_config_i(configHeader, "fillRedMax")
+            };
+            int fillGreen[2] = {
+                read_config_i(configHeader, "fillGreenMin"),
+                read_config_i(configHeader, "fillGreenMax")
+            };
+            int fillBlue = read_config_i(configHeader, "fillBlue");
+            int alpha[2] = {
+              read_config_i(configHeader, "alphaMin"),
+              read_config_i(configHeader, "alphaMax")
+            };
+            float radius[2] = {
+              read_config_f(configHeader, "radiusMin"),
+              read_config_f(configHeader, "radiusMax")
+            };
+            int verts[2] = {
+              read_config_i(configHeader, "vertsMin"),
+              read_config_i(configHeader, "vertsMax")
+            };
+            int amountTypes = read_config_i(configHeader, "amountTypes");
+
+            if (ImGui::InputFloat("Spread", &spread, 1.f, 10.f)) {
+              write_config(configHeader, "spread", std::to_string(spread));
+            }
+            if (ImGui::InputFloat("Nozzle Spread", &nozzleSpread, 0.1f, 0.1f)) {
+              write_config(configHeader, "nozzleSpread", std::to_string(nozzleSpread));
+            }
+            if (ImGui::InputInt("Speed", &speed, 1, 10)) {
+              write_config(configHeader, "speed", std::to_string(speed));
+            }
+            if (ImGui::InputInt("Duration", &duration, 1, 10)) {
+              write_config(configHeader, "duration", std::to_string(duration));
+            }
+            if (ImGui::InputFloat("Offset", &offset, 1.f, 10.f)) {
+              write_config(configHeader, "offset", std::to_string(offset));
+            }
+            if (ImGui::InputInt("Frequency", &freq, 1, 1)) {
+              write_config(configHeader, "freq", std::to_string(freq));
+            }
+            if (ImGui::InputInt("Quantity", &quantity, 1, 1)) {
+              write_config(configHeader, "quantity", std::to_string(quantity));
+            }
+            if (ImGui::InputInt("Particle Lifespan", &smallLifespan, 1, 10)) {
+              write_config(configHeader, "smallLifespan", std::to_string(smallLifespan));
+            }
+            if (ImGui::InputFloat("Random Scale", &randomScale, 0.1f, 1.0f)) {
+              write_config(configHeader, "randomScale", std::to_string(randomScale));
+            }
+            if (ImGui::DragIntRange2("Fill Red", &fillRed[0], &fillRed[1], 1, 0, 255)) {
+              write_config(configHeader, "fillRedMin", std::to_string(fillRed[0]));
+              write_config(configHeader, "fillRedMax", std::to_string(fillRed[1]));
+            }
+            if (ImGui::DragIntRange2("Fill Green", &fillGreen[0], &fillGreen[1], 1, 0, 255)) {
+              write_config(configHeader, "fillGreenMin", std::to_string(fillGreen[0]));
+              write_config(configHeader, "fillGreenMax", std::to_string(fillGreen[1]));
+            }
+            if (ImGui::InputInt("Fill Blue", &fillBlue, 1, 10)) {
+              write_config(configHeader, "fillBlue", std::to_string(fillBlue));
+            }
+            if (ImGui::DragIntRange2("Alpha", &alpha[0], &alpha[1], 1, 0, 255)) {
+              write_config(configHeader, "alphaMin", std::to_string(alpha[0]));
+              write_config(configHeader, "alphaMax", std::to_string(alpha[1]));
+            }
+            if (ImGui::DragFloatRange2("Radius", &radius[0], &radius[1], 0.0f, 10.0f)) {
+              write_config(configHeader, "radiusMin", std::to_string(radius[0]));
+              write_config(configHeader, "radiusMax", std::to_string(radius[1]));
+            }
+            if (ImGui::DragIntRange2("Vertices", &verts[0], &verts[1], 1, 3, 8)) {
+              write_config(configHeader, "vertsMin", std::to_string(verts[0]));
+              write_config(configHeader, "vertsMax", std::to_string(verts[1]));
+            }
+            if (ImGui::InputInt("Amount Types", &amountTypes, 1, 1)) {
+              write_config(configHeader, "amountTypes", std::to_string(amountTypes));
+            }
+
             break;
           }
           }
@@ -556,47 +784,59 @@ void Game::sGUI() {
               ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border |
                   ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
         ImGui::SeparatorText("Window");
+        std::vector<std::string> resolutions {};
+        for (const auto & mode : m_video_modes) {
+          resolutions.push_back(std::to_string(mode.width) + "x" + std::to_string(mode.height) + " (" + std::to_string(mode.bitsPerPixel) + ")");
+        }
+        const std::string current_refresh =
+            m_config["Window"]["refreshRate"];
+        std::vector<std::string> refresh_rates{current_refresh, "144", "120",
+                                               "60", "30"};
+        const bool current_fullscreen =
+            (bool)read_config_i("Window", "fullscreen");
         static int res_idx = 0;
-        const std::string current_res = "*" + m_config["Window"]["width"] +
-                                        "x" + m_config["Window"]["height"];
-        std::vector<std::string> resolutions{current_res, "2560x1440",
-                                             "1920x1080", "1280x720",
-                                             "1024x576",  "960x540"};
+        static int refresh_idx = 0;
+        static bool fullscreen = current_fullscreen;
+        // auto iterator = find(resolutions.begin(), resolutions.end(), current_res);
+        // if (iterator != resolutions.end()) {
+        //   res_idx = iterator - resolutions.begin();
+        // }
         ImGui::Text("Resolution");
         if (ImGui::BeginCombo("##res_select", resolutions[res_idx].c_str())) {
           for (int i = 0; i < resolutions.size(); ++i) {
             const bool is_selected = (res_idx == i);
+            ImGui::PushID(i);
             if (ImGui::Selectable(resolutions[i].c_str(), is_selected)) {
-              if (i != 0) {
-                res_warning = true;
-              } else {
-                res_warning = false;
-              }
               res_idx = i;
+              // if (i != 0) {
+              //   res_warning = true;
+              // } else {
+              //   res_warning = false;
+              // }
+              write_config("Window", "width", std::to_string(m_video_modes[res_idx].width));
+              write_config("Window", "height", std::to_string(m_video_modes[res_idx].height));
+              write_config("Window", "depth", std::to_string(m_video_modes[res_idx].bitsPerPixel));
             }
             if (is_selected) {
               ImGui::SetItemDefaultFocus();
             }
+            ImGui::PopID();
           }
           ImGui::EndCombo();
         }
-        static int refresh_idx = 0;
-        const std::string current_refresh =
-            "*" + m_config["Window"]["refreshRate"];
-        std::vector<std::string> refresh_rates{current_refresh, "144", "120",
-                                               "60", "30"};
         ImGui::Text("Refresh");
         if (ImGui::BeginCombo("##refresh_select",
                               refresh_rates[refresh_idx].c_str())) {
           for (int i = 0; i < refresh_rates.size(); ++i) {
             const bool is_selected = (refresh_idx == i);
             if (ImGui::Selectable(refresh_rates[i].c_str(), is_selected)) {
-              if (i != 0) {
-                refresh_warning = true;
-              } else {
-                refresh_warning = false;
-              }
               refresh_idx = i;
+              // if (i != 0) {
+              //   refresh_warning = true;
+              // } else {
+              //   refresh_warning = false;
+              // }
+              write_config("Window", "refreshRate", refresh_rates[refresh_idx]);
             }
             if (is_selected) {
               ImGui::SetItemDefaultFocus();
@@ -605,14 +845,12 @@ void Game::sGUI() {
           ImGui::EndCombo();
         }
         ImGui::SameLine();
-        const bool current_fullscreen =
-            (bool)read_config_i("Window", "fullscreen");
-        static bool fullscreen = current_fullscreen;
         if (ImGui::Checkbox("fullscreen", &fullscreen)) {
           if (fullscreen != current_fullscreen) {
-            fullscreen_warning = true;
+            write_config("Window", "fullscreen", std::to_string((int)fullscreen));
+            // fullscreen_warning = true;
           } else {
-            fullscreen_warning = false;
+            // fullscreen_warning = false;
           }
         }
         ImGui::EndChild();
@@ -626,8 +864,7 @@ void Game::sGUI() {
                   ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
         ImGui::SeparatorText("Font");
         static int font_s_idx = 0;
-        const std::string current_font_s = "*" + m_config["Font"]["size"];
-        std::vector<std::string> font_sizes{current_font_s, "16", "24", "32",
+        std::vector<std::string> font_sizes{"16", "24", "32",
                                             "48",           "60", "72"};
         ImGui::Text("Size");
         if (ImGui::BeginCombo("##font_size_select",
@@ -651,23 +888,15 @@ void Game::sGUI() {
               "Player##config-player", {700, 0},
               ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border |
                   ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
-        ImGui::Text("Window");
+        ImGui::Text("Player");
         ImGui::EndChild();
       }
 
       if (ImGui::BeginChild(
-              "Bullet##config-bullet", {700, 0},
+              "Enemies##config-enemies", {700, 0},
               ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border |
                   ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
-        ImGui::Text("Window");
-        ImGui::EndChild();
-      }
-
-      if (ImGui::BeginChild(
-              "Enemy##config-enemy", {700, 0},
-              ImGuiChildFlags_FrameStyle | ImGuiChildFlags_Border |
-                  ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX)) {
-        ImGui::Text("Window");
+        ImGui::Text("Enemies");
         ImGui::EndChild();
       }
 

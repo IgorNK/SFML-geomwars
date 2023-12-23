@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sDamageReact(const sf::Time &deltaTime) {
   for (std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {

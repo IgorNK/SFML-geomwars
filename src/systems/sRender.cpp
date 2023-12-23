@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sRender(const sf::Time &deltaTime) {
   m_window.clear();

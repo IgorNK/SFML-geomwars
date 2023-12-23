@@ -1,6 +1,7 @@
 Window [
     width=1920, 
     height=1080, 
+    depth=32,
     refreshRate=60, 
     fullscreen=1,
 ]
@@ -78,10 +79,6 @@ Boss [
     score=2000,
     scoreSizeMultiplier=1.5,
     smallScore=700,
-]
-Bullet [
-    specialRecursion=0,
-    specialAmount=6,
 ]
 Pickup [
     shapeRadius=24,
@@ -532,6 +529,7 @@ SpecialRotor4 [
 ]
 SpecialFlamethrower0 [
     spread=30.0,
+    nozzleSpread=0.5,
     speed=4,
     duration=60,
     fireRate=120,
@@ -555,6 +553,7 @@ SpecialFlamethrower0 [
 ]
 SpecialFlamethrower1 [
     spread=30.0,
+    nozzleSpread=0.5,
     speed=4,
     duration=60,
     fireRate=120,
@@ -578,6 +577,7 @@ SpecialFlamethrower1 [
 ]
 SpecialFlamethrower2 [
     spread=30.0,
+    nozzleSpread=0.5,
     speed=4,
     duration=60,
     fireRate=120,
@@ -601,6 +601,7 @@ SpecialFlamethrower2 [
 ]
 SpecialFlamethrower3 [
     spread=30.0,
+    nozzleSpread=0.5,
     speed=4,
     duration=60,
     fireRate=120,
@@ -624,6 +625,7 @@ SpecialFlamethrower3 [
 ]
 SpecialFlamethrower4 [
     spread=30.0,
+    nozzleSpread=0.5,
     speed=4,
     duration=60,
     fireRate=120,

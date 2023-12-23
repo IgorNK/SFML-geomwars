@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sEmitters(const sf::Time &deltaTime) {
   for (const std::shared_ptr<Entity> entity :
@@ -30,7 +30,7 @@ void Game::sEmitters(const sf::Time &deltaTime) {
             const float collider_radius = shape.shape.getRadius();
             const Vec2 pos =
                 parent_pos + emitter.offset.clone().rotate_rad(
-                                 emitter.parent.rotation + rand_angle);
+                                 emitter.parent.rotation + rand_angle * emitter.nozzleSpread);
             const Vec2 vel =
                 Vec2::forward().rotate_rad(parent_rot).rotate_rad(rand_angle) *
                 speed;

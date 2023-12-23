@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sTimers(const sf::Time &deltaTime) {
   for (const std::shared_ptr<Entity> entity : m_entity_manager.get_entities()) {

@@ -167,6 +167,7 @@ public:
 	const std::vector<CShape> particles;
 	const Vec2 offset;
 	const float angle;
+	const float nozzleSpread;
 	const float speed;
 	const int freq;
 	int countdown;
@@ -179,6 +180,7 @@ public:
 		const Vec2 & in_offset,
 		const int in_duration,
 		const float spread_angle,
+		const float in_nozzleSpread,
 		const float in_speed,
 		const int emit_freq,
 		const int in_quantity,
@@ -191,6 +193,7 @@ public:
 		, countdown(in_duration)
 		, speed(in_speed)
 		, angle(spread_angle)
+		, nozzleSpread(in_nozzleSpread)
 		, freq(emit_freq)
 		, quantity(in_quantity)
 		, lifespan(in_lifespan)

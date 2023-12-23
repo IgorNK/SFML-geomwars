@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sInputHandling() {
   for (std::shared_ptr<Entity> p : m_entity_manager.get_entities(Tag::Player)) {

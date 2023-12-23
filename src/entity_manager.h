@@ -19,5 +19,6 @@ public:
 	const std::shared_ptr<Entity> add_entity(const Tag tag);
 	const std::shared_ptr<Entity> schedule(const Tag tag);
 	const bool pop_schedule();
+	void flush();
 	void update();
 };

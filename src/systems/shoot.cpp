@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::shoot() {
   for (const std::shared_ptr<Entity> player :
@@ -263,6 +263,7 @@ void Game::shootSpecialWeapon() {
               "SpecialFlamethrower" +
               std::to_string(player->special_weapon->power);
           const float spread = read_config_f(configHeader, "spread");
+          const float nozzleSpread = read_config_f(configHeader, "nozzleSpread");
           const int speed = read_config_i(configHeader, "speed");
           const int duration = read_config_i(configHeader, "duration");
           const int fireRate = read_config_i(configHeader, "fireRate");
@@ -285,7 +286,7 @@ void Game::shootSpecialWeapon() {
           const int vertsMax = read_config_i(configHeader, "vertsMax");
           const int amountTypes = read_config_i(configHeader, "amountTypes");
 
-          const float spread_rad = 30 / Vec2::rad_to_deg;
+          const float spread_rad = spread / Vec2::rad_to_deg;
 
           std::vector<CShape> shapes{};
           for (int i = 0; i < amountTypes; i++) {
@@ -299,8 +300,8 @@ void Game::shootSpecialWeapon() {
                                            (fillRedMax - fillRedMin) +
                                        fillRedMin);
             const int green = std::round((float)std::rand() / (float)RAND_MAX *
-                                             (fillRedMax - fillRedMin) +
-                                         fillRedMin);
+                                             (fillGreenMax - fillGreenMin) +
+                                         fillGreenMin);
             const int alpha = std::round((float)std::rand() / (float)RAND_MAX *
                                              (alphaMax - alphaMin) +
                                          alphaMin);
@@ -321,6 +322,7 @@ void Game::shootSpecialWeapon() {
                        Vec2::forward() * offset, // Offset
                        duration,
                        spread_rad, // Spread angle
+                       nozzleSpread,
                        speed, freq, quantity, smallLifespan, randomScale));
           player->special_weapon->fire_countdown = fireRate;
           break;

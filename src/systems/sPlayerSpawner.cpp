@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sPlayerSpawner(const sf::Time &deltaTime) {
   if (m_entity_manager.get_entities(Tag::Player).size() > 0) {

@@ -74,7 +74,9 @@ void Game::init(const std::string &configfile) {
   std::srand(std::time(nullptr));
   const size_t width = read_config_i("Window", "width");
   const size_t height = read_config_i("Window", "height");
+  const size_t depth = read_config_i("Window", "depth");
   const size_t framerate = read_config_i("Window", "refreshRate");
+  const bool fullscreen = read_config_i("Window", "fullscreen");
 
   m_enemy_spawn_interval = read_config_i("Global", "enemySpawnInterval");
   m_enemy_spawn_countdown = m_enemy_spawn_interval;
@@ -87,11 +89,28 @@ void Game::init(const std::string &configfile) {
   m_score_to_boss_mult = read_config_f("Boss", "scoreRequirementMultiplier");
 
   m_shape_rotation = read_config_f("Global", "shapeRotation");
+  m_video_modes = sf::VideoMode::getFullscreenModes();
 
-  m_window.create(sf::VideoMode(width, height), "ImGUI + SFML = <3");
+  create_window(width, height, "ImGUI + SFML = <3", depth, framerate, fullscreen);
+}
+
+void Game::create_window(const size_t width, const size_t height, const std::string & title, const size_t depth, const size_t framerate, const bool fullscreen) {
+  std::cout << "creating window\n";
+  if (fullscreen) {
+    m_window.create(sf::VideoMode::getDesktopMode(), title, sf::Style::Fullscreen);
+  } else {
+    m_window.create(sf::VideoMode(width, height, depth), title);
+  }
+  std::cout << "created\n";
   m_window.setFramerateLimit(framerate);
-  ImGui::SFML::Init(m_window);
+  std::cout << "set framerate limit\n";
   spawn_world();
+  std::cout << "spawned world\n";
+  ImGui::SFML::Init(m_window);
+  std::cout << "initialized imgui\n";
+}
+void Game::create_window(const sf::VideoMode & mode, const std::string & title, const size_t framerate, const bool fullscreen) {
+  create_window(mode.width, mode.height, title, mode.bitsPerPixel, framerate, fullscreen);
 }
 
 void Game::shutdown() {
@@ -100,9 +119,11 @@ void Game::shutdown() {
 }
 
 void Game::spawn_world() {
+	m_entity_manager.flush();
   const std::shared_ptr<Entity> wb =
       m_entity_manager.add_entity(Tag::WorldBounds);
-  wb->rect = std::make_shared<CRect>(CRect(1920, 1080));
+  const sf::Vector2u window_res = m_window.getSize();
+  wb->rect = std::make_shared<CRect>(CRect(window_res.x, window_res.y));
   const std::shared_ptr<Entity> score =
       m_entity_manager.add_entity(Tag::ScoreWindow);
   const int font_size = read_config_i("Font", "size");

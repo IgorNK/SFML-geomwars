@@ -1,4 +1,4 @@
-#include "game.h"
+#include "../game.h"
 
 void Game::sUserInput() {
   sf::Event event;

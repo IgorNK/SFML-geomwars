@@ -39,6 +39,13 @@ const bool EntityManager::pop_schedule() {
 	return true;
 }
 
+void EntityManager::flush() {
+	m_to_add.clear();
+	m_entities.clear();
+	m_tag_entities.clear();
+	m_scheduled.clear();
+}
+
 void EntityManager::update() {
 	for (auto const entity : m_to_add) {
 		m_entities.push_back(entity);

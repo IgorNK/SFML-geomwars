@@ -17,6 +17,7 @@ class Game {
   std::string m_userconfig_file;
   sf::Font m_font;
   sf::RenderWindow m_window{sf::RenderWindow()};
+  std::vector<sf::VideoMode> m_video_modes;
   sf::Clock m_delta_clock{sf::Clock()};
   int m_enemy_spawn_interval{50};
   int m_enemy_spawn_countdown{50};
@@ -29,6 +30,9 @@ class Game {
   float m_score_to_boss_mult{1.5f};
   size_t m_frameCount{0};
   float m_shape_rotation{1.6f};
+
+  void create_window(const size_t width = 800, const size_t height = 600, const std::string & title = "SFML", const size_t depth = 32, const size_t framerate = 60, const bool fullscreen = false);
+  void create_window(const sf::VideoMode & mode, const std::string & title, const size_t framerate, const bool fullscreen);
   void test_config(Config &config) const;
   Config parse_tokens(const std::vector<std::string> &tokenstream) const;
   const Config read_file(const std::string &configfile) const;
