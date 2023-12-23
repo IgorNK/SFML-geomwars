@@ -5,6 +5,7 @@ Window [
     fullscreen=1,
 ]
 Global [
+    gameCloseTimeout=100,
     shapeRotation=1.6,
     enemySpawnInterval=120,
     enemySpawnMultiplier=0.1,
