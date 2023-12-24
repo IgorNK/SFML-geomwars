@@ -57,7 +57,7 @@ void Game::setup_player(Entity &player, const Vec2 &position) {
     player.input = std::make_shared<CInput>(CInput());
     player.health = std::make_shared<CHealth>(CHealth(health));
     player.invincibility =
-        std::make_shared<CInvincibility>(CInvincibility(invincibilityDuration));
+        std::make_shared<CInvincibility>(CInvincibility(invincibilityDuration, invincibilityDuration));
     std::cout << "done\n";
   } catch (std::exception &e) {
     throw std::runtime_error(std::string(e.what(), sizeof(e.what())) +

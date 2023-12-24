@@ -237,7 +237,7 @@ public:
 	int countdown {10};
 	int duration {10};
 	CInvincibility() { }
-	CInvincibility(const int in_duration) : countdown(in_duration), duration(in_duration) { }
+	CInvincibility(const int in_duration, const int start = 0) : countdown(start), duration(in_duration) { }
 	~CInvincibility() { }
 };
 
