@@ -268,6 +268,7 @@ void Game::on_pickup(const CWeaponPickup::PickupType type) {
         }
       } else {
         player->weapon->power = 0;
+        player->special_weapon->power = 0;
         player->weapon->mode = CWeapon::FireMode::ShotSpread;
         player->special_weapon->mode = CSpecialWeapon::FireMode::SpecialRotor;
       }
@@ -283,6 +284,7 @@ void Game::on_pickup(const CWeaponPickup::PickupType type) {
         }
       } else {
         player->weapon->power = 0;
+        player->special_weapon->power = 0;
         player->weapon->mode = CWeapon::FireMode::ShotLaser;
         player->special_weapon->mode =
             CSpecialWeapon::FireMode::SpecialFlamethrower;
