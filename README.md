@@ -7,6 +7,7 @@ This example uses Ninja compiler:
 ```
 > cmake -G Ninja ../SFML-geomwars
 > cmake --build .
+> git submodule update --init
 > cd ./src
 > ./sfmlgame
 ```
